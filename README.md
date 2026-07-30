@@ -1,101 +1,96 @@
-# Cortex: Real-Time Observability & Telemetry Dashboard
+# Cortex: AI-Powered Backend Observability & Root Cause Analysis Platform
 
-Cortex is a comprehensive, real-time observability platform designed to monitor system telemetry (Logs, CPU, and Memory usage) and automatically track system incidents. Built with a modern Node.js backend and a React frontend, Cortex uses event-driven WebSockets to provide instantaneous system insights.
-
-## System Architecture
-
-The project follows a standard decoupled monorepo architecture:
-
-- **`server/`**: A Node.js and Express backend responsible for telemetry generation, data persistence via PostgreSQL (Neon), and real-time WebSocket streaming.
-- **`client/`**: A React application utilizing Vite, styled with Tailwind CSS, providing a professional, high-performance UI.
-
-### Data Persistence
-
-All telemetry data is persisted in a Neon PostgreSQL database. The schema consists of three primary tables:
-
-1. `logs`: Stores application logs with varying severity levels (INFO, WARN, ERROR, DEBUG).
-2. `system_metrics`: Stores hardware utilization snapshots (CPU usage percentage and Memory usage in MB).
-3. `incidents`: Tracks the lifecycle of system anomalies, categorizing them by type (`LOG`, `CPU`, or `MEMORY`).
-
-### Real-Time WebSocket Streaming
-
-Traditional polling mechanisms have been completely replaced with a true real-time, event-driven architecture using **Socket.io**.
-Whenever the background workers successfully insert a new log or metric into the database, the backend immediately emits a WebSocket event (`new_log` or `new_metrics`) to all connected clients. The React frontend maintains a persistent connection, allowing the dashboard's summary cards, data tables, and charts to update instantaneously without requiring a page refresh.
+Cortex is a comprehensive, production-inspired backend observability platform designed to continuously monitor system telemetry (Logs, CPU, and Memory usage), automatically detect system anomalies, and perform **Root Cause Analysis (RCA)** with interactive event timelines. Built with a modular Node.js/Express backend, Neon PostgreSQL database, real-time WebSockets (Socket.io), and a modern React + Tailwind CSS dashboard.
 
 ---
 
-## Telemetry Workers
+## 🏗️ System Architecture
 
-The backend utilizes independent background workers running on a 10-second interval to simulate and collect telemetry data:
+The project follows a clean, decoupled monorepo architecture:
 
-1. **Log Generator (`logGenerator.js`)**: Simulates application traffic by generating categorized log messages.
-2. **Metrics Collector (`metricsCollector.js`)**: Interfaces directly with the host machine's Operating System via Node's native `os` module. It calculates accurate, real-time CPU utilization over the 10-second tick and measures the host's actual memory footprint.
-
----
-
-## Smart Incident Tracking
-
-Cortex features an automated incident management pipeline that intelligently groups related anomalies. To ensure precision, incident tracking is isolated into three independent streams:
-
-### 1. Log Incidents
-
-- **Trigger Condition**: An `ERROR` log is generated.
-- **Resolution Condition**: A healthy `INFO` or `DEBUG` log is subsequently generated.
-
-### 2. CPU Incidents
-
-- **Trigger Condition**: Real-time CPU usage exceeds **80%**.
-- **Resolution Condition**: Real-time CPU usage drops below **50%**.
-
-### 3. Memory Incidents
-
-- **Trigger Condition**: Real-time memory usage exceeds **90%** of total system capacity.
-- **Resolution Condition**: Real-time memory usage normalizes below **70%**.
-
-**Incident Isolation:** Because these three streams are tracked independently, a CPU incident and a Log incident can coexist simultaneously without overlapping or falsely resolving one another.
-
-**Root-Cause Analysis (Time-Window Isolation):** When an active or past incident is selected in the UI sidebar, the main dashboard shifts from a live data feed to an isolated time-window. It queries the database to display only the specific logs and hardware metrics that occurred precisely **1 minute before and 1 minute after** the incident triggered, providing a clear context for root-cause analysis.
+- **`server/`**: Node.js & Express backend handling data ingestion, Neon PostgreSQL persistence, background worker telemetry generation, rule-based incident lifecycle management, RCA calculation engine, and real-time Socket.io streaming.
+- **`client/`**: React application built with Vite and Tailwind CSS, featuring live telemetry summary cards, custom SVG time-series charts, log explorer, and interactive Root Cause Analysis (RCA) modals.
 
 ---
 
-## User Interface Design
+## 💾 Data Persistence Schema (Neon PostgreSQL)
 
-The frontend has been engineered for clarity, performance, and professional aesthetics:
-
-- **Clean Aesthetic**: Utilizes a high-contrast, flat light theme optimized for readability, mirroring enterprise-grade administrative dashboards.
-- **Dynamic Summary Cards**: Top-level metrics (Total Logs, Error Rate, CPU, Memory) aggregate data on the fly and update dynamically as WebSocket payloads arrive.
-- **Chronological Area Charts**: Real-time hardware telemetry is plotted using Recharts. The line interpolation is configured for sharp, financial-style tracking, with new data points entering smoothly from the right side of the timeline.
+1. `logs`: Stores application logs with timestamps and severity levels (`INFO`, `WARN`, `ERROR`, `DEBUG`).
+2. `system_metrics`: Stores hardware resource utilization snapshots (`cpu_usage` percentage, `memory_usage_mb` footprint, `timestamp`).
+3. `incidents`: Tracks the lifecycle of system anomalies (`id`, `type`, `status`, `trigger_reason`, `resolution_reason`, `created_at`, `resolved_at`).
 
 ---
 
-## Setup & Installation
+## ⚙️ Background Telemetry Workers
+
+1. **Log Generator (`logGenerator.js`)**: Simulates application traffic and logs on a 10-second tick interval.
+2. **Metrics Collector (`metricsCollector.js`)**: Samples real-time CPU utilization and memory footprint via Node.js native `os` module on a 10-second tick interval.
+
+---
+
+## 🚨 Automated Incident Engine & Lifecycle
+
+Cortex monitors real-time operational streams and automatically triggers and resolves incidents:
+
+1. **LOG Incidents**: Triggers when an `ERROR` log is recorded; auto-resolves when healthy `INFO`/`DEBUG` logs follow.
+2. **CPU Incidents**: Triggers when real-time CPU load exceeds **80%**; auto-resolves when CPU load normalizes below **50%**.
+3. **MEMORY Incidents**: Triggers when memory usage exceeds **90%** of total capacity; auto-resolves when memory drops below **70%**.
+
+---
+
+## 🔍 Root Cause Analysis (RCA) Module
+
+When any active or historical incident is selected on the dashboard, Cortex generates a deterministic **Root Cause Analysis (RCA)** report:
+
+### 1. Telemetry Window Isolation
+Queries all operational data recorded within a isolated time window spanning **60 seconds prior to incident trigger** up to **60 seconds post-resolution** (or current time if active).
+
+### 2. Comprehensive RCA Telemetry Breakdown
+- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, Affected Service (`Compute Cluster`, `Memory Pool`, `Express Router`), and Related Endpoint.
+- **Log Analytics**: Total logs count, error count, warning count, info/debug counts, first error timestamp, last error timestamp, and the **most frequent error message** with occurrence count.
+- **System Metrics Analytics**: Peak CPU %, Average CPU %, Peak Memory (MB), Average Memory (MB), and snapshot counts.
+
+### 3. Chronological Incident Event Timeline
+Reconstructs a timestamped vertical event timeline highlighting key operational milestones:
+- ⏱️ **Telemetry Collection Window Initiated** (Baseline timestamp)
+- ⚠️ **First Error Log Detected** (Earliest error message & timestamp)
+- 📈 **Metric Peak Recorded** (Highest CPU % / Memory MB peak timestamp)
+- 🚨 **Incident Triggered** (Creation timestamp & trigger reason)
+- ✅ **Incident Resolved** (Resolution timestamp & resolution reason)
+
+### 4. Interactive RCA Dashboard Panel
+Presents an enterprise-grade Incident Details Modal featuring a **Root Cause Diagnosis Card**, diagnostic KPI grid, interactive event timeline, and tabbed scoped views for incident-specific logs and hardware charts.
+
+---
+
+## 🚀 Setup & Installation
 
 ### 1. Database Configuration
-
-Ensure your Neon PostgreSQL database has the correct schema.
+Ensure your Neon PostgreSQL connection URL is configured.
 
 ### 2. Environment Variables
-
-In the `server/` directory, ensure you have a `.env` file containing your database connection string:
-
+In `server/` (or project root `.env`), ensure `DATABASE_URL` is set:
 ```env
 PORT=5000
-DATABASE_URL=postgres://[user]:[password]@[neon-hostname]/[dbname]?sslmode=require
+NODE_ENV=development
+DATABASE_URL=postgresql://[user]:[password]@[neon-hostname]/[dbname]?sslmode=require
 ```
 
-### 3. Running the Application
+### 3. Running the Server & Client
 
-The repository utilizes `concurrently` from the root `package.json` to streamline the development workflow.
-To install dependencies and start both the Node server and the Vite React app simultaneously:
-
+#### Terminal 1: Start Backend (Port 5000)
 ```bash
-# Install dependencies for both client and server
+cd server
 npm install
-
-# Start both applications
 npm run dev
 ```
 
-For both frontend and backend
+#### Terminal 2: Start Client (Port 3000)
+```bash
+cd client
+npm install
+npm run dev
+```
 
-Navigate to `http://localhost:3000` to view the live dashboard.
+#### Open in Browser
+👉 **`http://localhost:3000`**
