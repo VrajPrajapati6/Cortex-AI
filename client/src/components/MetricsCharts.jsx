@@ -1,9 +1,86 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useState } from 'react';
+import { Cpu, HardDrive } from 'lucide-react';
+
+const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-xs text-gray-400 font-mono">
+        Waiting for telemetry snapshots...
+      </div>
+    );
+  }
+
+  const values = data.map((d) => d[dataKey] || 0);
+  const maxVal = Math.max(...values, 10);
+  const minVal = 0;
+  
+  const width = 600;
+  const padding = 20;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+
+  const points = data.map((d, i) => {
+    const x = padding + (i / Math.max(data.length - 1, 1)) * chartWidth;
+    const y = height - padding - ((d[dataKey] - minVal) / (maxVal - minVal)) * chartHeight;
+    return { x, y, value: d[dataKey], label: d.time };
+  });
+
+  const pathD = points.reduce((acc, point, index) => {
+    return index === 0 ? `M ${point.x} ${point.y}` : `${acc} L ${point.x} ${point.y}`;
+  }, '');
+
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+
+  return (
+    <div className="relative w-full overflow-hidden">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+        <defs>
+          <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+          </linearGradient>
+        </defs>
+
+        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#e5e7eb" strokeDasharray="3 3" />
+        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#e5e7eb" strokeDasharray="3 3" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e5e7eb" />
+
+        <path d={areaD} fill={`url(#gradient-${dataKey})`} />
+        <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+        {points.map((p, idx) => (
+          <circle
+            key={idx}
+            cx={p.x}
+            cy={p.y}
+            r={hoveredPoint?.index === idx ? '5' : '3'}
+            fill={color}
+            className="cursor-pointer transition-all duration-150"
+            onMouseEnter={() => setHoveredPoint({ ...p, index: idx })}
+            onMouseLeave={() => setHoveredPoint(null)}
+          />
+        ))}
+      </svg>
+
+      {hoveredPoint && (
+        <div 
+          className="absolute z-20 bg-slate-900 text-white text-xs font-mono p-2 rounded shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          style={{ left: `${(hoveredPoint.x / width) * 100}%`, top: '35%' }}
+        >
+          <div className="text-gray-400 text-[10px]">{hoveredPoint.label}</div>
+          <div className="font-bold mt-0.5">
+            {hoveredPoint.value} {unit}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const MetricsCharts = ({ metrics = [] }) => {
-  // Sort chronologically so it flows right to left naturally
-  const chartData = [...metrics].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map(m => {
+  const chartData = [...metrics].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((m) => {
     const d = new Date(m.timestamp);
     return {
       time: `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`,
@@ -12,101 +89,27 @@ export const MetricsCharts = ({ metrics = [] }) => {
     };
   });
 
-  if (chartData.length === 0) return null;
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      
-      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm h-72 flex flex-col">
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">CPU Usage (%)</h3>
-        <div className="flex-1 min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis 
-                dataKey="time" 
-                tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }} 
-                tickMargin={10} 
-                minTickGap={20} 
-                axisLine={false} 
-                tickLine={false} 
-              />
-              <YAxis 
-                domain={[0, 100]} 
-                tick={{ fill: '#9ca3af', fontSize: 11 }} 
-                axisLine={false} 
-                tickLine={false} 
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '6px', fontSize: '12px', color: '#fff' }}
-                itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
-                cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
-              />
-              <Area 
-                type="linear" 
-                dataKey="cpu" 
-                stroke="#10b981" 
-                fillOpacity={1} 
-                fill="url(#colorCpu)" 
-                strokeWidth={2} 
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-emerald-600" />
+            CPU Usage (%)
+          </h3>
         </div>
+        <SvgAreaChart data={chartData} dataKey="cpu" color="#10b981" unit="%" />
       </div>
 
-      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm h-72 flex flex-col">
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">Memory Usage (MB)</h3>
-        <div className="flex-1 min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis 
-                dataKey="time" 
-                tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }} 
-                tickMargin={10} 
-                minTickGap={20} 
-                axisLine={false} 
-                tickLine={false} 
-              />
-              <YAxis 
-                domain={['auto', 'auto']}
-                tick={{ fill: '#9ca3af', fontSize: 11 }} 
-                axisLine={false} 
-                tickLine={false} 
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '6px', fontSize: '12px', color: '#fff' }}
-                itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
-                cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
-              />
-              <Area 
-                type="linear" 
-                dataKey="mem" 
-                stroke="#3b82f6" 
-                fillOpacity={1} 
-                fill="url(#colorMem)" 
-                strokeWidth={2} 
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-blue-600" />
+            Memory Usage (MB)
+          </h3>
         </div>
+        <SvgAreaChart data={chartData} dataKey="mem" color="#3b82f6" unit="MB" />
       </div>
-
     </div>
   );
 };

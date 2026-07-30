@@ -5,6 +5,7 @@ import { SummaryCards } from './components/SummaryCards';
 import { MetricsCharts } from './components/MetricsCharts';
 import { LogsTable } from './components/LogsTable';
 import { IncidentsList } from './components/IncidentsList';
+import { IncidentRcaModal } from './components/IncidentRcaModal';
 
 const socket = io('http://localhost:5000');
 
@@ -27,7 +28,7 @@ export default function App() {
   const fetchDashboardData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // Always fetch incidents
+      // Always fetch incidents list
       const incRes = await fetch('http://localhost:5000/api/incidents');
       if (incRes.ok) {
         const incData = await incRes.json();
@@ -35,30 +36,35 @@ export default function App() {
       }
 
       if (selectedIncidentId) {
+        // Fetch incident-specific logs
         const incLogsRes = await fetch(`http://localhost:5000/api/incidents/${selectedIncidentId}/logs`);
         if (incLogsRes.ok) {
           const logsData = await incLogsRes.json();
           setLogs(logsData.data.logs || []);
         }
 
+        // Fetch incident-specific metrics
         const incMetricsRes = await fetch(`http://localhost:5000/api/incidents/${selectedIncidentId}/metrics`);
         if (incMetricsRes.ok) {
           const metricsData = await incMetricsRes.json();
           setMetrics(metricsData.data.metrics || []);
         }
       } else {
+        // Fetch global summary
         const summaryRes = await fetch('http://localhost:5000/api/summary');
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
           setSummary(summaryData.data);
         }
 
+        // Fetch global metrics
         const metricsRes = await fetch('http://localhost:5000/api/metrics?limit=30');
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
           setMetrics(metricsData.data.metrics || []);
         }
 
+        // Fetch global logs
         const offset = (page - 1) * limit;
         const queryParams = new URLSearchParams({
           limit: limit.toString(),
@@ -90,13 +96,11 @@ export default function App() {
   // Real-time WebSocket Listeners
   useEffect(() => {
     const handleNewLog = (newLog) => {
-      // Update logs table
       if (!selectedIncidentId && page === 1) {
         if (selectedLevel === 'ALL' || newLog.level === selectedLevel) {
           setLogs(prev => [newLog, ...prev].slice(0, limit));
         }
       }
-      // Live update summary card for total logs and error rate
       setSummary(prev => {
         if (!prev) return prev;
         const isError = newLog.level === 'ERROR';
@@ -118,7 +122,6 @@ export default function App() {
       if (!selectedIncidentId) {
         setMetrics(prev => [...prev, newMetric].slice(-30));
       }
-      // Live update summary card for CPU/Memory
       setSummary(prev => {
         if (!prev) return prev;
         return {
@@ -132,7 +135,6 @@ export default function App() {
     };
 
     const handleIncidentUpdate = () => {
-      // Re-fetch incidents list immediately when status changes
       fetchDashboardData();
     };
 
@@ -170,38 +172,41 @@ export default function App() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
           
-          {selectedIncidentId && (
-            <div className="mb-4">
-              <button 
-                onClick={() => setSelectedIncidentId(null)}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
-              >
-                &larr; Back to Dashboard
-              </button>
-            </div>
+          {selectedIncidentId ? (
+            /* Root Cause Analysis (RCA) Incident Panel */
+            <IncidentRcaModal
+              incidentId={selectedIncidentId}
+              onClose={() => setSelectedIncidentId(null)}
+              logs={logs}
+              metrics={metrics}
+            />
+          ) : (
+            /* Normal Live Monitoring View */
+            <>
+              <SummaryCards summary={summary} />
+
+              <div className="mb-6">
+                <MetricsCharts metrics={metrics} />
+              </div>
+
+              <div className="flex-1">
+                <LogsTable
+                  logs={logs}
+                  pagination={pagination}
+                  selectedLevel={selectedLevel}
+                  setSelectedLevel={setSelectedLevel}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  page={page}
+                  setPage={setPage}
+                  limit={limit}
+                  setLimit={setLimit}
+                  isIncidentView={false}
+                />
+              </div>
+            </>
           )}
 
-          {!selectedIncidentId && <SummaryCards summary={summary} />}
-
-          <div className="mb-6">
-            <MetricsCharts metrics={metrics} />
-          </div>
-
-          <div className="flex-1">
-            <LogsTable
-              logs={logs}
-              pagination={pagination}
-              selectedLevel={selectedLevel}
-              setSelectedLevel={setSelectedLevel}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              page={page}
-              setPage={setPage}
-              limit={limit}
-              setLimit={setLimit}
-              isIncidentView={!!selectedIncidentId}
-            />
-          </div>
         </div>
 
       </main>
