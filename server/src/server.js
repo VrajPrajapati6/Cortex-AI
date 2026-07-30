@@ -3,9 +3,14 @@ import { config } from './config/env.config.js';
 import { startLogGenerator } from './workers/logGenerator.js';
 import { startMetricsCollector } from './workers/metricsCollector.js';
 
+import { initSocket } from './config/socket.js';
+
 const server = app.listen(config.port, () => {
   console.log(`[Cortex Server] Running on port ${config.port} in ${config.nodeEnv} mode`);
   
+  // Initialize Socket.io
+  initSocket(server);
+
   // Start the background workers
   startLogGenerator();
   startMetricsCollector();

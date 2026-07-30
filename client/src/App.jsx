@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { MetricsCharts } from './components/MetricsCharts';
 import { LogsTable } from './components/LogsTable';
+import { IncidentsList } from './components/IncidentsList';
+
+const socket = io('http://localhost:5000');
 
 export default function App() {
   const [summary, setSummary] = useState(null);
   const [metrics, setMetrics] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [pagination, setPagination] = useState({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [countdown, setCountdown] = useState(10);
+  
+  const [selectedIncidentId, setSelectedIncidentId] = useState(null);
 
   // Filters & Pagination State
   const [selectedLevel, setSelectedLevel] = useState('ALL');
@@ -22,116 +27,184 @@ export default function App() {
   const fetchDashboardData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // 1. Summary API
-      const summaryRes = await fetch('/api/summary');
-      if (summaryRes.ok) {
-        const summaryData = await summaryRes.json();
-        setSummary(summaryData.data);
+      // Always fetch incidents
+      const incRes = await fetch('http://localhost:5000/api/incidents');
+      if (incRes.ok) {
+        const incData = await incRes.json();
+        setIncidents(incData.data.incidents || []);
       }
 
-      // 2. Metrics API
-      const metricsRes = await fetch('/api/metrics?limit=30');
-      if (metricsRes.ok) {
-        const metricsData = await metricsRes.json();
-        setMetrics(metricsData.data.metrics || []);
-      }
+      if (selectedIncidentId) {
+        const incLogsRes = await fetch(`http://localhost:5000/api/incidents/${selectedIncidentId}/logs`);
+        if (incLogsRes.ok) {
+          const logsData = await incLogsRes.json();
+          setLogs(logsData.data.logs || []);
+        }
 
-      // 3. Logs API
-      const offset = (page - 1) * limit;
-      const queryParams = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString()
-      });
+        const incMetricsRes = await fetch(`http://localhost:5000/api/incidents/${selectedIncidentId}/metrics`);
+        if (incMetricsRes.ok) {
+          const metricsData = await incMetricsRes.json();
+          setMetrics(metricsData.data.metrics || []);
+        }
+      } else {
+        const summaryRes = await fetch('http://localhost:5000/api/summary');
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          setSummary(summaryData.data);
+        }
 
-      if (selectedLevel && selectedLevel !== 'ALL') {
-        queryParams.append('level', selectedLevel);
-      }
-      if (searchTerm.trim()) {
-        queryParams.append('search', searchTerm.trim());
-      }
+        const metricsRes = await fetch('http://localhost:5000/api/metrics?limit=30');
+        if (metricsRes.ok) {
+          const metricsData = await metricsRes.json();
+          setMetrics(metricsData.data.metrics || []);
+        }
 
-      const logsRes = await fetch(`/api/logs?${queryParams.toString()}`);
-      if (logsRes.ok) {
-        const logsData = await logsRes.json();
-        setLogs(logsData.data.logs || []);
-        setPagination(logsData.data.pagination || {});
+        const offset = (page - 1) * limit;
+        const queryParams = new URLSearchParams({
+          limit: limit.toString(),
+          offset: offset.toString()
+        });
+
+        if (selectedLevel && selectedLevel !== 'ALL') queryParams.append('level', selectedLevel);
+        if (searchTerm.trim()) queryParams.append('search', searchTerm.trim());
+
+        const logsRes = await fetch(`http://localhost:5000/api/logs?${queryParams.toString()}`);
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          setLogs(logsData.data.logs || []);
+          setPagination(logsData.data.pagination || {});
+        }
       }
     } catch (error) {
-      console.error('Error fetching observability telemetry:', error);
+      console.error('Error fetching telemetry:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedLevel, searchTerm, page, limit]);
+  }, [selectedLevel, searchTerm, page, limit, selectedIncidentId]);
 
-  // Initial Fetch & Filter Trigger
+  // Initial Data Fetch
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // 10-Second Auto Refresh Timer
+  // Real-time WebSocket Listeners
   useEffect(() => {
-    if (!autoRefresh) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          fetchDashboardData();
-          return 10;
+    const handleNewLog = (newLog) => {
+      // Update logs table
+      if (!selectedIncidentId && page === 1) {
+        if (selectedLevel === 'ALL' || newLog.level === selectedLevel) {
+          setLogs(prev => [newLog, ...prev].slice(0, limit));
         }
-        return prev - 1;
+      }
+      // Live update summary card for total logs and error rate
+      setSummary(prev => {
+        if (!prev) return prev;
+        const isError = newLog.level === 'ERROR';
+        const newTotalLogs = (prev.totalLogs || 0) + 1;
+        const newErrorCount = (prev.logLevelBreakdown?.error || 0) + (isError ? 1 : 0);
+        return {
+          ...prev,
+          totalLogs: newTotalLogs,
+          errorRate: newTotalLogs > 0 ? Math.round((newErrorCount / newTotalLogs) * 100) : 0,
+          logLevelBreakdown: {
+            ...prev.logLevelBreakdown,
+            [newLog.level.toLowerCase()]: (prev.logLevelBreakdown?.[newLog.level.toLowerCase()] || 0) + 1
+          }
+        };
       });
-    }, 1000);
+    };
 
-    return () => clearInterval(timer);
-  }, [autoRefresh, fetchDashboardData]);
+    const handleNewMetrics = (newMetric) => {
+      if (!selectedIncidentId) {
+        setMetrics(prev => [...prev, newMetric].slice(-30));
+      }
+      // Live update summary card for CPU/Memory
+      setSummary(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          latestMetrics: {
+            cpuUsage: newMetric.cpu_usage,
+            memoryUsageMb: newMetric.memory_usage_mb
+          }
+        };
+      });
+    };
 
-  const handleManualRefresh = () => {
-    setCountdown(10);
-    fetchDashboardData();
-  };
+    const handleIncidentUpdate = () => {
+      // Re-fetch incidents list immediately when status changes
+      fetchDashboardData();
+    };
+
+    socket.on('new_log', handleNewLog);
+    socket.on('new_metrics', handleNewMetrics);
+    socket.on('incident_update', handleIncidentUpdate);
+
+    return () => {
+      socket.off('new_log', handleNewLog);
+      socket.off('new_metrics', handleNewMetrics);
+      socket.off('incident_update', handleIncidentUpdate);
+    };
+  }, [selectedIncidentId, page, limit, selectedLevel, fetchDashboardData]);
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans antialiased">
-      {/* Top Navigation */}
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
       <Header
-        systemStatus={summary?.systemStatus || 'OPERATIONAL'}
+        systemStatus={summary?.systemStatus || (incidents.some(i => i.status === 'ACTIVE') ? 'CRITICAL' : 'OPERATIONAL')}
         lastUpdated={summary?.lastUpdated}
-        autoRefresh={autoRefresh}
-        setAutoRefresh={setAutoRefresh}
-        countdown={countdown}
-        onManualRefresh={handleManualRefresh}
         isRefreshing={isRefreshing}
+        onManualRefresh={fetchDashboardData}
       />
 
-      {/* Main Dashboard Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
+      <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-6 flex gap-6">
         
-        {/* KPI Summary Cards */}
-        <SummaryCards summary={summary} />
+        {/* Sidebar: Incidents */}
+        <div className="w-80 flex-shrink-0 hidden md:block">
+          <IncidentsList 
+            incidents={incidents} 
+            selectedIncidentId={selectedIncidentId}
+            onSelect={setSelectedIncidentId}
+          />
+        </div>
 
-        {/* Recharts System Metrics */}
-        <MetricsCharts metrics={metrics} />
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {selectedIncidentId && (
+            <div className="mb-4">
+              <button 
+                onClick={() => setSelectedIncidentId(null)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+              >
+                &larr; Back to Dashboard
+              </button>
+            </div>
+          )}
 
-        {/* Telemetry Logs Explorer */}
-        <LogsTable
-          logs={logs}
-          pagination={pagination}
-          selectedLevel={selectedLevel}
-          setSelectedLevel={setSelectedLevel}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          page={page}
-          setPage={setPage}
-          limit={limit}
-          setLimit={setLimit}
-        />
+          {!selectedIncidentId && <SummaryCards summary={summary} />}
+
+          <div className="mb-6">
+            <MetricsCharts metrics={metrics} />
+          </div>
+
+          <div className="flex-1">
+            <LogsTable
+              logs={logs}
+              pagination={pagination}
+              selectedLevel={selectedLevel}
+              setSelectedLevel={setSelectedLevel}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              page={page}
+              setPage={setPage}
+              limit={limit}
+              setLimit={setLimit}
+              isIncidentView={!!selectedIncidentId}
+            />
+          </div>
+        </div>
 
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/60 py-4 px-4 text-center text-xs text-slate-500 font-mono">
-        Cortex Telemetry Dashboard &bull; Live PostgreSQL Ingestion Engine &bull; Auto-refreshes every 10s
-      </footer>
     </div>
   );
 }
