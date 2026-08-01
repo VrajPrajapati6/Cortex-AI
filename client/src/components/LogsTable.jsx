@@ -15,7 +15,8 @@ export const LogsTable = ({
   setPage,
   limit,
   setLimit,
-  isIncidentView = false
+  isIncidentView = false,
+  onTraceSelect
 }) => {
   const levels = ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG'];
   
@@ -177,9 +178,18 @@ export const LogsTable = ({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className="px-2 py-0.5 rounded bg-gray-100 border border-gray-300 text-gray-800 text-[10px] font-bold font-mono">
+                    <button 
+                      onClick={() => onTraceSelect && onTraceSelect(log.request_id || log.requestId)}
+                      disabled={!onTraceSelect}
+                      className={`px-2 py-0.5 rounded border text-[10px] font-bold font-mono transition-colors ${
+                        onTraceSelect 
+                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 cursor-pointer' 
+                          : 'bg-gray-100 border-gray-300 text-gray-800'
+                      }`}
+                      title={onTraceSelect ? "View Distributed Trace Waterfall" : ""}
+                    >
                       {log.request_id || log.requestId || 'N/A'}
-                    </span>
+                    </button>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${getEventTypeBadgeStyle(log.event_type || log.eventType)}`}>

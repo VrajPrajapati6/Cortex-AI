@@ -1,160 +1,271 @@
-# Cortex: AI-Powered Backend Observability & Root Cause Analysis Platform
+# Cortex: The AI-Powered Backend Observability & Root Cause Analysis Platform
 
-Cortex is a comprehensive, production-inspired backend observability platform designed to continuously monitor system telemetry (Logs, CPU, and Memory usage), automatically detect system anomalies, and perform **Root Cause Analysis (RCA)** with interactive event timelines. Built with a modular Node.js/Express backend, Neon PostgreSQL database, real-time WebSockets (Socket.io), and a modern React + Tailwind CSS dashboard.
-
----
-
-## System Architecture
-
-The project follows a clean, decoupled monorepo architecture:
-
-- **`server/`**: Node.js & Express backend handling data ingestion, Neon PostgreSQL persistence, background worker telemetry generation, rule-based incident lifecycle management, RCA calculation engine, and real-time Socket.io streaming.
-- **`client/`**: React application built with Vite and Tailwind CSS, featuring live telemetry summary cards, custom SVG time-series charts, log explorer, and interactive Root Cause Analysis (RCA) modals.
+Welcome to **Cortex**! This document serves as the ultimate, exhaustive guide to the entire platform. Whether you are a newcomer to the repository, a developer looking to contribute, or a senior engineer reviewing the architectural decisions, this guide leaves no stone unturned. It explains every single component, algorithm, database table, mathematical scoring system, and feature we have built—all in plain, easy-to-understand English.
 
 ---
 
-## Data Persistence Schema (Neon PostgreSQL)
+## 1. The Core Problem: Why Does Cortex Exist?
 
-1. `logs`: Stores application logs enriched with distributed tracing and microservice telemetry fields:
-   - `service_name`
-   - `request_id`
-   - `span_id`
-   - `parent_span_id`
-   - `event_type`
-   - `endpoint`
-   - `status_code`
-   - `response_time_ms`
-   - `timestamp`
-   - `level`
-   - `message`
+In modern software engineering, monolithic applications are often broken down into dozens (or hundreds) of smaller pieces called **Microservices** (for example: a User Service, an Order Service, a Payment Service, a Notification Service, and a Database). 
 
-   **Migration:**
-   ```sql
-   ALTER TABLE logs
-   ADD COLUMN span_id UUID,
-   ADD COLUMN parent_span_id UUID;
-   ```
-2. `system_metrics`: Stores hardware resource utilization snapshots (`cpu_usage` percentage, `memory_usage_mb` footprint, `timestamp`).
-3. `service_metrics`: Stores aggregated service-level metrics (`request_count`, `error_rate`, `avg_latency`, `p95_latency`, `p99_latency`) for baseline comparison.
-4. `incidents`: Tracks the lifecycle of system anomalies (`id`, `type`, `status`, `trigger_reason`, `resolution_reason`, `created_at`, `resolved_at`).
+While microservices make it much easier for large teams of developers to build and deploy software independently, they make it incredibly difficult to debug problems when things go wrong in production.
+
+Consider this scenario: A user tries to place an order, but the website shows an error. 
+- The **User Service** logs an error because the checkout failed.
+- The **Order Service** logs an error because it couldn't secure payment.
+- The **Payment Service** logs an error because it timed out.
+- The **Database** logs an error because it ran out of connections.
+
+If you are an on-call engineer, your dashboard just lit up with hundreds of red errors across four different services. Was the Order Service actually broken? Or did it fail because the Payment Service timed out? And did the Payment Service time out because the Database was too slow? 
+
+Cortex is a complete, production-ready Observability Platform built from scratch to solve this exact problem autonomously. Cortex does three main things without any human intervention:
+1. Continuously Monitors your entire distributed system (Logs, CPU load, and Memory footprint).
+2. Automatically Detects Anomalies and triggers "Incidents" when thresholds are breached.
+3. Performs Root Cause Analysis (RCA) mathematically. It acts like an AI detective, tracing the failure through the maze of microservices to pinpoint the exact service that started the fire, and explaining exactly why it made that conclusion with a confidence score and concrete evidence.
 
 ---
 
-## Background Telemetry Workers
+## 2. Comprehensive System Architecture & Tech Stack
 
-1. **Log Generator (`logGenerator.js`)**: Simulates enriched microservice traffic scenarios (e.g., Database Timeout, Cache Miss) with correlation IDs and detailed logs on a 10-second tick interval.
-2. **Metrics Collector (`metricsCollector.js`)**: Samples real-time CPU utilization and memory footprint via Node.js native `os` module on a 10-second tick interval.
-3. **Latency Aggregator (`latencyAggregator.js`)**: Aggregates raw logs every 60 seconds into mathematically true P95 and P99 latency percentiles per service for RCA baseline comparisons.
+Cortex is built using a modern, decoupled Monorepo architecture (where both the frontend UI and backend API live in the same repository but operate entirely independently).
 
----
+### The Frontend (client/ folder)
+The visual dashboard that engineers use to monitor the system in real-time.
+- React.js & Vite: We use React for building a modular user interface, and Vite as the build tool to compile it blazingly fast.
+- Tailwind CSS: Used for all styling. It allows us to build beautiful, responsive, enterprise-grade dark-mode interfaces incredibly quickly without writing raw CSS files.
+- Socket.io-Client: This allows the frontend to maintain a persistent, bidirectional WebSocket connection with the backend. Graphs, tables, and incident alerts update instantly without you ever needing to refresh the page.
+- Recharts: A charting library used to render the live CPU and Memory usage line graphs.
+- Lucide React: Provides the clean, beautiful SVG icons used throughout the dashboard.
 
-## Automated Incident Engine & Lifecycle
-
-Cortex monitors real-time operational streams and automatically triggers and resolves incidents:
-
-1. **LOG Incidents**: Triggers when an `ERROR` log is recorded; auto-resolves when healthy `INFO`/`DEBUG` logs follow.
-2. **CPU Incidents**: Triggers when real-time CPU load exceeds **80%**; auto-resolves when CPU load normalizes below **50%**.
-3. **MEMORY Incidents**: Triggers when memory usage exceeds **90%** of total capacity; auto-resolves when memory drops below **70%**.
-
----
-
-## Service Health & SLO Layer
-
-Cortex proactively monitors system degradation before incidents even occur using a live **Service Health Map**:
-- **SLO Metrics Tracked:** `request_count`, `error_rate`, `availability %`, and `p95_latency` per service.
-- **Dynamic Baselines:** Calculates a rolling 15-minute moving average of P95 latency for accurate baseline comparison.
-- **Health Rules Engine:**
-  - **Healthy (Green):** `error_rate < 1%` AND `p95_latency <= 2× baseline`
-  - **Degraded (Yellow):** `error_rate >= 1%` OR `p95_latency > 2× baseline`
-  - **Critical (Red):** `error_rate > 5%` OR `p95_latency > 5× baseline`
-
-### Service Dependency Topology Graph
-The dashboard includes an interactive, live-updating **SVG Topology Graph** that maps the backend architecture:
-- **Node Color:** Dynamically maps to the active Health Status (Green, Yellow, Red).
-- **Edge Highlighting:** Standard dependencies are gray, but if the Causal Engine detects **active failure propagation** between services in the last 60 seconds, the edge glows red.
-- **Propagation Volume:** The thickness of the red edge scales dynamically with the frequency of propagating errors, providing instant visual identification of the blast radius.
+### The Backend (server/ folder)
+The heavy-lifting engine that processes data, runs background workers, and executes the complex RCA algorithms.
+- Node.js & Express.js: The core server technology used to build our RESTful API endpoints.
+- Neon PostgreSQL: A serverless, modern PostgreSQL database. This is where all data is permanently stored. We use the pg library to write raw, highly optimized SQL queries (using CTEs, subqueries, and precise aggregations).
+- Socket.io: The server-side WebSocket implementation that broadcasts live telemetry data directly to the frontend dashboard.
+- Crypto & OS Modules: Native Node.js modules used for generating unique cryptographic IDs and reading the actual physical server hardware statistics (like real-time CPU and Memory load).
 
 ---
 
-## Root Cause Analysis (RCA) Module
+## 3. The Database Schema (In-Depth)
 
-When any active or historical incident is selected on the dashboard, Cortex generates a deterministic **Root Cause Analysis (RCA)** report:
+To make all these advanced features work, Cortex relies on four highly structured relational database tables.
 
-### 1. Telemetry Window Isolation
-Queries all operational data recorded within a strict time window spanning exactly **60 seconds prior to incident trigger** up to the exact moment of creation.
+### A. The logs Table
+This is the most massive table in the database. It stores every single event that happens across all microservices in real-time.
+- id: A standard UUID primary key.
+- request_id: A unique ID assigned to a single user's action (e.g., placing an order). All logs generated by different services during this action will share this same ID so we can group them together later.
+- span_id: A unique ID for the specific step in the process (e.g., the exact moment the Payment Service was invoked).
+- parent_span_id: If the Order Service calls the Payment Service, the Payment Service's log will record the Order Service's span_id here. This is how we build hierarchical trees of execution.
+- service_name: The name of the microservice (e.g., 'Payment Service', 'Redis').
+- event_type: The category of the event (e.g., API_REQUEST, DATABASE_QUERY, EXTERNAL_API).
+- endpoint: The API route or function hit (e.g., /api/v1/payments/charge).
+- status_code: The HTTP status code (e.g., 200 for success, 500 for internal server error).
+- response_time_ms: Exactly how many milliseconds the function took to run.
+- level: The severity of the log (INFO, WARN, ERROR, DEBUG).
+- message: The human-readable text explaining what happened.
+- timestamp: The exact millisecond the log was recorded.
 
-### 2. Advanced Statistical Causal Engine
-Cortex dynamically identifies the true Root Cause by constructing a deterministic causal graph using distributed tracing (`span_id` and `parent_span_id`):
-- **Request Correlation:** The engine first isolates chaotic log streams by grouping them perfectly into request chains using the unique `request_id`.
-- **Propagation Graphing:** It maps adjacent errors in a request to a statically defined architectural topology (e.g., ensuring `OrderService` actually depends on `PaymentService`), keeping only topology-valid "Failure Propagation Edges."
-- **Evidence Scoring:** It grades every service in the 60s incident window across 5 strict signals (Maximum 140 pts):
-  1. Failed first (+30 pts)
-  2. Upstream of affected service (+25 pts)
-  3. Downstream propagation (+40 pts)
-  4. P95 latency increased by >3× baseline (+20 pts)
-  5. Repeated propagation across independent requests (+5 pts each, capped at +25)
-- **Causal Output:** It outputs the final Root Cause, a statistical Confidence %, the main Propagation Chain (e.g., `PostgreSQL -> PaymentService -> OrderService`), and concrete Evidence. Confidence is computed by normalizing the final causal score against the maximum theoretical score and is capped at 95% to avoid false certainty.
+### B. The system_metrics Table
+This table stores snapshots of the physical server's hardware resources.
+- id: Primary key.
+- cpu_usage: The percentage of the CPU currently being used (0 to 100).
+- memory_usage_mb: The exact amount of RAM currently being used in Megabytes.
+- timestamp: Exactly when this snapshot was taken.
 
-### Resource-Centric RCA Fallback
-When incidents are triggered by CPU or Memory anomalies and no statistically valid propagation chain can be constructed, Cortex falls back to a resource-centric RCA strategy.
-The fallback engine ranks services by:
-- Peak latency increase
-- Error rate increase
-- Request throughput increase
-- Resource pressure contribution
-- Temporal proximity to the anomaly
+### C. The service_metrics Table
+This table stores the historical "Baseline" (normal) performance of every service. We aggregate data and store it here to avoid querying massive log tables repeatedly.
+- id: Primary key.
+- service_name: The specific microservice.
+- request_count: How many times the service was called in the aggregation window.
+- error_rate: The percentage of those requests that failed.
+- avg_latency: The average speed of the service.
+- p95_latency: The "95th Percentile" latency. This means 95% of all requests finished faster than this number. This is the gold standard for measuring speed in software engineering because it ignores extreme outliers.
+- p99_latency: The 99th percentile latency.
+- timestamp: The time of aggregation.
 
-### 3. Incident Impact Diff (Before vs During)
-To quantify the exact impact of an anomaly, Cortex isolates the **Root Cause service** and computes a statistical diff of its performance metrics during the incident window against a clean **15-minute pre-incident baseline**.
-- Quantifies exact percentage degradation across **P95 Latency**, **Error Rate**, and **Request Volume**.
-- Renders a visually distinct Before vs During comparison UI so on-call engineers instantly understand the magnitude of the outage.
-
-### 4. Comprehensive RCA Telemetry Breakdown
-- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, and Root Cause.
-- **Log Analytics**: Total logs count, error count, warning count, info/debug counts, first error timestamp, last error timestamp, and the **most frequent error message** with occurrence count.
-- **System Metrics Analytics**: Peak CPU %, Average CPU %, Peak Memory (MB), Average Memory (MB), and snapshot counts.
-
-### 3. Chronological Incident Event Timeline
-Reconstructs a timestamped vertical event timeline highlighting key operational milestones:
-- **Telemetry Collection Window Initiated** (Baseline timestamp)
-- **First Error Log Detected** (Earliest error message & timestamp)
-- **Metric Peak Recorded** (Highest CPU % / Memory MB peak timestamp)
-- **Incident Triggered** (Creation timestamp & trigger reason)
-- **Incident Resolved** (Resolution timestamp & resolution reason)
-
-### 4. Interactive RCA Dashboard Panel
-Presents an enterprise-grade Incident Details Modal featuring a **Root Cause Diagnosis Card**, diagnostic KPI grid, interactive event timeline, and tabbed scoped views for incident-specific logs and hardware charts.
+### D. The incidents Table
+This tracks the lifecycle of system outages.
+- id: A UUID.
+- type: What kind of incident it is (LOG, CPU, MEMORY).
+- status: Current state (ACTIVE or RESOLVED).
+- trigger_reason: Text explaining exactly why Cortex opened the incident (e.g., "High CPU Usage: 85%").
+- resolution_reason: Text explaining exactly why Cortex closed it.
+- created_at & resolved_at: Timestamps tracking the precise duration of the outage.
 
 ---
 
-## Setup & Installation
+## 4. Background Telemetry Workers (Data Generation)
 
-### 1. Database Configuration
-Ensure your Neon PostgreSQL connection URL is configured.
+Because Cortex is a monitoring platform, it needs constant data to monitor. To allow developers to test the platform locally without connecting it to a massive production cluster, we built three background scripts (called "Workers") that run constantly in a loop on the backend server to simulate a massive, live production environment.
 
-### 2. Environment Variables
-In `server/` (or project root `.env`), ensure `DATABASE_URL` is set:
+### 1. The Log Generator (logGenerator.js)
+- Interval: Runs every 10 seconds.
+- Purpose: Generates fake, mathematically accurate user traffic. 
+- How it works: It randomly selects a scenario (like a successful checkout, a database crash, or a payment timeout). It mathematically simulates the exact flow of data. It generates unique Request IDs (appending random hex hashes to prevent collisions across server restarts), assigns parent_span_ids, and mathematically staggers the start times of the logs so that child functions always start after their parent functions. It dynamically calculates the parent's total response time so that it fully encompasses the execution duration of all its children, creating a mathematically perfect waterfall simulation.
+
+### 2. The Metrics Collector (metricsCollector.js)
+- Interval: Runs every 10 seconds.
+- Purpose: Samples hardware utilization.
+- How it works: It uses the native Node.js os module to read your computer's actual physical CPU ticks (calculating the idle vs total differential) and RAM usage (calculating free vs total memory). It saves this data to the system_metrics table and immediately broadcasts it via WebSockets to the frontend.
+
+### 3. The Latency Aggregator (latencyAggregator.js)
+- Interval: Runs every 60 seconds.
+- Purpose: Establishes performance baselines.
+- How it works: It looks at all the raw logs generated in the last minute, groups them by service, sorts their response times from fastest to slowest, and mathematically calculates the exact P95 and P99 latencies. It saves this aggregated data to the service_metrics table so Cortex knows what "normal" speed looks like for the RCA engine.
+
+---
+
+## 5. The Automated Incident Engine
+
+Cortex is entirely autonomous. It does not wait for a human to push a button. It constantly watches the data generated by the workers and automatically manages the lifecycle of incidents:
+
+- Creating LOG Incidents: If any service outputs a log with the level ERROR, Cortex immediately triggers a LOG incident. It auto-resolves this incident when it sees the service start outputting healthy INFO logs again.
+- Creating CPU Incidents: If the physical CPU load crosses 80%, a CPU incident is created. It auto-resolves when the CPU cools down to below 50%.
+- Creating MEMORY Incidents: If RAM usage exceeds 90% of total capacity, an incident triggers. It resolves when RAM drops below 70%.
+
+Whenever an incident triggers, it is saved to the database, and the frontend dashboard turns red and sounds the alarm via the WebSocket connection.
+
+---
+
+## 6. Live Service Topology & Health Map
+
+The main dashboard features a comprehensive visual map of your entire system.
+
+### A. The Dynamic Health System (SLOs)
+Every service on the dashboard has a colored dot representing its health. This is calculated dynamically using a rolling 15-minute average of its normal speed:
+- Green (Healthy): The error rate is less than 1%, and the service's speed is normal (less than 2x baseline).
+- Yellow (Degraded): The error rate has reached 1%, OR the service is taking more than twice as long as it normally does.
+- Red (Critical): The error rate is over 5%, OR the service is taking five times as long as it normally does.
+
+### B. The Topology Dependency Graph
+This section draws a highly customized SVG (Scalable Vector Graphics) map showing how the services connect to each other.
+- Normally, the lines connecting the services are static and gray.
+- Active Failure Edges: If Cortex's backend algorithms detect that an error is actively spreading from one service to another in the last 60 seconds (for example, the Database crashed, which caused the Payment Service to throw an error, which caused the Order Service to fail), the line connecting them will glow Bright Red and pulse! The thickness of the line increases based on how many errors are spreading across that specific edge, visually highlighting the "blast radius" of the outage.
+
+---
+
+## 7. The Mathematical Root Cause Analysis (RCA) Engine
+
+This is the most advanced, mathematically complex feature in Cortex. When an incident occurs, Cortex generates a deterministic RCA report to prove exactly which service caused it. 
+
+### Step 1: Time Boxing
+Cortex takes the exact timestamp of when the incident started, and draws a strict time window going back exactly 60 seconds. It pulls all the logs and metrics that occurred in this specific isolation window.
+
+### Step 2: Trace Reconstruction
+The algorithm looks at the thousands of chaotic logs and sorts them. It groups them by request_id, and then uses span_id and parent_span_id to rebuild the exact "tree" of what happened (Service A called Service B, which called Service C).
+
+### Step 3: The Evidence Scoring System
+Cortex grades every single service that was involved in the outage using a strict 5-rule rubric. A service can earn a maximum of 140 points:
+1. First to Fail (+30 points): Did this service log the chronologically earliest error in the entire 60-second window?
+2. Upstream Source (+25 points): In the reconstructed tree, is this service at the very bottom? (If the Order Service fails because the Database failed, the Database is the upstream source).
+3. Downstream Propagation (+40 points): Did this service's failure successfully travel upwards and break the services that called it? This is the strongest indicator of a root cause.
+4. Latency Degradation (+20 points): Did this service's speed suddenly spike to more than 3x its normal 15-minute baseline speed?
+5. Repeated Failures (+25 points): Is this service causing errors across multiple different users' requests? (+5 points per request, capped at 25).
+
+### Step 4: The Resource Fallback Strategy
+Sometimes, an incident is caused by a massive CPU or Memory spike, and no service actually logged a red ERROR. In this scenario, Cortex cannot find a log tree, so it gracefully switches to a "Resource Fallback" strategy. It looks at the hardware metrics and ranks services based on which one experienced the highest spike in traffic throughput and latency exactly at the exact moment the CPU spiked.
+
+### Step 5: The Final Verdict
+Cortex tallies the points, selects the service with the highest score as the Root Cause, and calculates a Confidence Percentage (capped at 95% to avoid false certainty). It presents all this evidence in a beautiful, tabbed diagnostic card on the frontend.
+
+---
+
+## 8. Incident Impact Diff (Before vs. During)
+
+Once you know what caused the problem, the very next question an engineer asks is: "Exactly how bad is the damage compared to normal?"
+
+Cortex provides a dedicated UI panel comparing the Root Cause service's performance before the incident to its performance during the incident.
+
+1. Baseline Window: Cortex calculates the exact average Latency, Error Rate, and Request Volume over a clean 15-minute period before the incident.
+2. Incident Window: It calculates the exact same metrics for the time the incident has been active.
+3. The Diff: It mathematically calculates the percentage difference, rendering a UI that explicitly tells the engineer: "P95 Latency has increased by +2233%!"
+
+---
+
+## 9. Distributed Trace Explorer (Waterfall View)
+
+To provide the ultimate debugging experience, Cortex allows you to zoom all the way down to a single user's request. 
+
+If you click on any Request ID in the logs table anywhere on the dashboard, Cortex opens the Trace Explorer. This is a highly complex visual tool inspired by enterprise tools like Jaeger and Zipkin.
+
+- How it works: The backend fetches all the logs for that single Request ID. It then mathematically computes the exact start offset and duration of every single function call.
+- The Waterfall Gantt Chart: It draws a horizontal timeline. You can visually see a long blue bar for the User Service, and nested underneath it, a slightly shorter bar for the Order Service. It perfectly illustrates how services wait for each other over the network.
+- Error Highlighting: If a specific span in the timeline failed, its bar is drawn in bright crimson red, allowing you to instantly pinpoint the exact function that broke the user's request without reading a single line of text.
+- Edge-Case Handling: The timeline mathematically restricts absolute width percentages so that text labels never clip outside the modal container, ensuring a perfect UI experience.
+
+---
+
+## 10. Codebase Directory Structure
+
+A quick overview of where things live in the repository:
+
+Client (React Frontend)
+- src/components/Header.jsx: Top navigation and system status.
+- src/components/IncidentRcaModal.jsx: The massive Root Cause diagnostic panel.
+- src/components/LogsTable.jsx: Interactive log viewer.
+- src/components/MetricsCharts.jsx: CPU/Memory line charts.
+- src/components/ServiceHealthMap.jsx: Grid of service SLOs.
+- src/components/TopologyGraph.jsx: The SVG dependency map.
+- src/components/TraceExplorerModal.jsx: The Waterfall Gantt chart.
+- src/App.jsx: Main dashboard layout.
+
+Server (Node.js Backend)
+- src/config/: DB and WebSocket configurations.
+- src/controllers/: Express route handlers (Health, Topology, Traces).
+- src/routes/: API routing definitions.
+- src/services/: Business logic (Correlation, Propagation, RCA Engine).
+- src/utils/: Helper functions (Incident Manager).
+- src/workers/logGenerator.js: Simulates traffic.
+- src/workers/latencyAggregator.js: Aggregates metrics.
+- src/workers/metricsCollector.js: Reads CPU/RAM.
+
+---
+
+## 11. Complete Setup & Installation Guide
+
+Running Cortex on your local machine is incredibly straightforward. You only need Node.js and a Neon database.
+
+### 1. Set Up Your Database
+1. Go to Neon.tech and create a free account.
+2. Create a new PostgreSQL project.
+3. Copy the "Connection String" (it will look something like postgresql://username:password@hostname/dbname?sslmode=require).
+
+### 2. Configure Environment Variables
+1. Open the project code and navigate to the server/ directory.
+2. Create a new file named .env.
+3. Add the following text to the file, replacing the DATABASE_URL with your copied string:
 ```env
 PORT=5000
 NODE_ENV=development
 DATABASE_URL=postgresql://[user]:[password]@[neon-hostname]/[dbname]?sslmode=require
 ```
 
-### 3. Running the Server & Client
-
-#### Terminal 1: Start Backend (Port 5000)
+### 3. Start the Backend Server (Terminal 1)
+Open your computer's terminal (or command prompt), navigate to the backend folder, install the necessary packages, and start the engine:
 ```bash
 cd server
 npm install
 npm run dev
 ```
+Note: The backend will run on port 5000. It will automatically connect to your database, automatically create all four tables if they don't exist, and begin generating fake telemetry traffic immediately.
 
-#### Terminal 2: Start Client (Port 3000)
+### 4. Start the Frontend Dashboard (Terminal 2)
+Open a second terminal window, navigate to the frontend folder, install the packages, and start the user interface:
 ```bash
 cd client
 npm install
 npm run dev
 ```
+Note: The frontend will usually run on port 3000 or 5173 depending on Vite.
 
-#### Open in Browser
-**`http://localhost:3000`**
+### 5. View the Platform
+Open your web browser and navigate to the URL provided in the frontend terminal (usually http://localhost:3000 or http://localhost:5173). 
+
+You will instantly see Cortex running, drawing live graphs, plotting telemetry, and occasionally triggering automated incidents based on the simulated traffic! 
+
+(Note: Because the Latency Aggregator worker runs every 60 seconds, the Live Service Map and Topology Graph will display a "Waiting for initial telemetry" message for the first minute after you start the server. This is by design!)
+
+---
+
+End of Documentation
+Cortex represents a massive undertaking in understanding distributed systems, telemetry generation, algorithmic graph traversal, and real-time frontend data visualization. Enjoy exploring the code!

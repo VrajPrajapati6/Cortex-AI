@@ -37,6 +37,7 @@ const requestFlowScenarios = [
   }
 ];
 
+const instanceId = crypto.randomBytes(2).toString('hex').toUpperCase();
 let requestCounter = 1;
 
 export const startLogGenerator = () => {
@@ -47,17 +48,53 @@ export const startLogGenerator = () => {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
     const reqNum = String(requestCounter++).padStart(6, '0');
-    const requestId = `REQ-${dateStr}-${reqNum}`;
+    const requestId = `REQ-${dateStr}-${instanceId}-${reqNum}`;
 
     // Select random scenario
     const scenario = requestFlowScenarios[Math.floor(Math.random() * requestFlowScenarios.length)];
 
-    let parentSpanId = null;
+    let currentStartTimeOffset = 0;
+    const computedSteps = [];
+    
+    // Top-down pass: assign start times and span IDs
+    for (let i = 0; i < scenario.steps.length; i++) {
+      const step = scenario.steps[i];
+      const intrinsicTime = step.delayMs + Math.floor(Math.random() * 25);
+      
+      computedSteps.push({
+        ...step,
+        spanId: crypto.randomUUID(),
+        startOffset: currentStartTimeOffset,
+        intrinsicTime: intrinsicTime
+      });
+      
+      // Child starts 5-15ms after parent
+      currentStartTimeOffset += Math.floor(Math.random() * 10) + 5; 
+    }
 
-    for (const step of scenario.steps) {
-      const timestamp = new Date().toISOString();
-      const responseTimeMs = step.delayMs + Math.floor(Math.random() * 25);
-      const spanId = crypto.randomUUID();
+    // Bottom-up pass: calculate encompassing response times
+    for (let i = computedSteps.length - 1; i >= 0; i--) {
+      const step = computedSteps[i];
+      if (i === computedSteps.length - 1) {
+        step.responseTimeMs = step.intrinsicTime;
+      } else {
+        const child = computedSteps[i + 1];
+        const childEndTime = child.startOffset + child.responseTimeMs;
+        const minEndTime = childEndTime + Math.floor(Math.random() * 10);
+        const parentIntrinsicEndTime = step.startOffset + step.intrinsicTime;
+        
+        const finalEndTime = Math.max(minEndTime, parentIntrinsicEndTime);
+        step.responseTimeMs = finalEndTime - step.startOffset;
+      }
+    }
+
+    let parentSpanId = null;
+    const baseDate = new Date();
+
+    for (const step of computedSteps) {
+      // Treat timestamp as the exact span start time!
+      const spanStartDate = new Date(baseDate.getTime() + step.startOffset);
+      const timestamp = spanStartDate.toISOString();
 
       try {
         // 1. Insert Enriched Telemetry Log into PostgreSQL
@@ -74,18 +111,18 @@ export const startLogGenerator = () => {
             step.message,
             step.endpoint,
             step.statusCode,
-            responseTimeMs,
+            step.responseTimeMs,
             timestamp,
-            spanId,
+            step.spanId,
             parentSpanId
           ]
         );
 
         const insertedLog = insertRes.rows[0];
-        console.log(`[Worker] [${step.serviceName}] [${requestId}] [${step.eventType}] [${step.level}] ${step.message}`);
+        console.log(`[Worker] [${step.serviceName}] [${requestId}] [${step.responseTimeMs}ms] ${step.message}`);
 
         // Update parent for next step (simple chain propagation)
-        parentSpanId = spanId;
+        parentSpanId = step.spanId;
 
         // 2. Incident Detection Evaluation
         const activeIncident = await getActiveIncident(pool, 'LOG');
@@ -110,10 +147,10 @@ export const startLogGenerator = () => {
           message: step.message,
           endpoint: step.endpoint,
           status_code: step.statusCode,
-          response_time_ms: responseTimeMs,
+          response_time_ms: step.responseTimeMs,
           timestamp,
-          span_id: spanId,
-          parent_span_id: parentSpanId
+          span_id: step.spanId,
+          parent_span_id: insertedLog.parent_span_id
         });
 
         if (incidentChanged) {

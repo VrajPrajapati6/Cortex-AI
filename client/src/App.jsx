@@ -8,6 +8,7 @@ import { IncidentsList } from "./components/IncidentsList";
 import { IncidentRcaModal } from "./components/IncidentRcaModal";
 import ServiceHealthMap from "./components/ServiceHealthMap";
 import TopologyGraph from "./components/TopologyGraph";
+import { TraceExplorerModal } from "./components/TraceExplorerModal";
 
 const socket = io("http://localhost:5000");
 
@@ -20,6 +21,7 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
+  const [selectedTraceId, setSelectedTraceId] = useState(null);
 
   // Filters & Pagination State
   const [selectedLevel, setSelectedLevel] = useState("ALL");
@@ -229,6 +231,7 @@ export default function App() {
               onClose={() => setSelectedIncidentId(null)}
               logs={logs}
               metrics={metrics}
+              onTraceSelect={setSelectedTraceId}
             />
           ) : (
             /* Normal Live Monitoring View */
@@ -259,12 +262,20 @@ export default function App() {
                   limit={limit}
                   setLimit={setLimit}
                   isIncidentView={false}
+                  onTraceSelect={setSelectedTraceId}
                 />
               </div>
             </>
           )}
         </div>
       </main>
+
+      {selectedTraceId && (
+        <TraceExplorerModal 
+          requestId={selectedTraceId} 
+          onClose={() => setSelectedTraceId(null)} 
+        />
+      )}
     </div>
   );
 }

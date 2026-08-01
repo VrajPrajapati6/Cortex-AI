@@ -16,7 +16,7 @@ import {
 import { MetricsCharts } from './MetricsCharts';
 import { LogsTable } from './LogsTable';
 
-export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [] }) => {
+export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [], onTraceSelect }) => {
   const [rcaData, setRcaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'logs' | 'metrics'
@@ -242,77 +242,86 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [] 
                   <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-200">
                     
                     {/* P95 Latency */}
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.p95_latency.toFixed(0)} ms</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
-                      </div>
-                      
-                      {(() => {
-                        const base = rcaData.incidentDiff.baseline.p95_latency;
-                        const during = rcaData.incidentDiff.during.p95_latency;
-                        const delta = base > 0 ? ((during - base) / base) * 100 : 0;
-                        const isDegraded = delta > 0;
-                        return (
-                          <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
-                          </div>
-                        );
-                      })()}
-                      
-                      <div className="flex flex-col items-end">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.p95_latency.toFixed(0)} ms</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During incident</span>
+                    <div className="p-4 flex flex-col gap-3">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider text-center border-b border-gray-100 pb-2">P95 Latency</div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.p95_latency.toFixed(0)} ms</span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
+                        </div>
+                        
+                        {(() => {
+                          const base = rcaData.incidentDiff.baseline.p95_latency;
+                          const during = rcaData.incidentDiff.during.p95_latency;
+                          const delta = base > 0 ? ((during - base) / base) * 100 : 0;
+                          const isDegraded = delta > 0;
+                          return (
+                            <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+                            </div>
+                          );
+                        })()}
+                        
+                        <div className="flex flex-col items-end">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.p95_latency.toFixed(0)} ms</span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Error Rate */}
-                    <div className="p-4 flex items-center justify-between bg-gray-50/50">
-                      <div className="flex flex-col">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.error_rate.toFixed(1)}%</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
-                      </div>
-                      
-                      {(() => {
-                        const base = rcaData.incidentDiff.baseline.error_rate;
-                        const during = rcaData.incidentDiff.during.error_rate;
-                        const delta = during - base; // absolute delta for percentages
-                        const isDegraded = delta > 0;
-                        return (
-                          <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
-                          </div>
-                        );
-                      })()}
-                      
-                      <div className="flex flex-col items-end">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.error_rate.toFixed(1)}%</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During incident</span>
+                    <div className="p-4 flex flex-col gap-3 bg-gray-50/50">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider text-center border-b border-gray-100 pb-2">Error Rate</div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.error_rate.toFixed(1)}%</span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
+                        </div>
+                        
+                        {(() => {
+                          const base = rcaData.incidentDiff.baseline.error_rate;
+                          const during = rcaData.incidentDiff.during.error_rate;
+                          const delta = during - base; // absolute delta for percentages
+                          const isDegraded = delta > 0;
+                          return (
+                            <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+                            </div>
+                          );
+                        })()}
+                        
+                        <div className="flex flex-col items-end">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.error_rate.toFixed(1)}%</span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Request Volume */}
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.request_rate.toFixed(0)} <span className="text-sm font-normal text-gray-500">req/min</span></span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
-                      </div>
-                      
-                      {(() => {
-                        const base = rcaData.incidentDiff.baseline.request_rate;
-                        const during = rcaData.incidentDiff.during.request_rate;
-                        const delta = base > 0 ? ((during - base) / base) * 100 : 0;
-                        const isDegraded = delta < -10; // 10% drop is degraded
-                        return (
-                          <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700'}`}>
-                            {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
-                          </div>
-                        );
-                      })()}
-                      
-                      <div className="flex flex-col items-end">
-                        <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.request_rate.toFixed(0)} <span className="text-sm font-normal text-gray-500">req/min</span></span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During incident</span>
+                    <div className="p-4 flex flex-col gap-3">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider text-center border-b border-gray-100 pb-2">Request Volume</div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.baseline.request_rate.toFixed(0)} <span className="text-sm font-normal text-gray-500">req/m</span></span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Baseline</span>
+                        </div>
+                        
+                        {(() => {
+                          const base = rcaData.incidentDiff.baseline.request_rate;
+                          const during = rcaData.incidentDiff.during.request_rate;
+                          const delta = base > 0 ? ((during - base) / base) * 100 : 0;
+                          const isDegraded = delta < -10; // 10% drop is degraded
+                          return (
+                            <div className={`px-2 py-1 rounded text-xs font-bold font-mono flex items-center ${isDegraded ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700'}`}>
+                              {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+                            </div>
+                          );
+                        })()}
+                        
+                        <div className="flex flex-col items-end">
+                          <span className="text-xl font-bold font-mono text-gray-900">{rcaData.incidentDiff.during.request_rate.toFixed(0)} <span className="text-sm font-normal text-gray-500">req/m</span></span>
+                          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">During</span>
+                        </div>
                       </div>
                     </div>
 
@@ -423,7 +432,7 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [] 
 
           {/* TAB 2: INCIDENT LOGS */}
           {activeTab === 'logs' && (
-            <LogsTable logs={logs} isIncidentView={true} />
+            <LogsTable logs={logs} isIncidentView={true} onTraceSelect={onTraceSelect} />
           )}
 
           {/* TAB 3: INCIDENT METRICS */}

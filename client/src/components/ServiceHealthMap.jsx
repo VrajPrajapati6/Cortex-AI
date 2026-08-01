@@ -25,8 +25,12 @@ const ServiceHealthMap = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && services.length === 0) {
-    return <div className="text-gray-400 p-4 border border-gray-800 rounded-lg animate-pulse">Loading Service Map...</div>;
+  if (services.length === 0) {
+    return (
+      <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6 h-40 flex items-center justify-center text-gray-500 font-mono">
+        {loading ? "Loading Service Map..." : "Waiting for initial telemetry... (may take up to 60s)"}
+      </div>
+    );
   }
 
   if (error) {

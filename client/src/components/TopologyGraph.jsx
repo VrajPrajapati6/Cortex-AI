@@ -40,10 +40,10 @@ export const TopologyGraph = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && nodes.length === 0) {
+  if (nodes.length === 0) {
     return (
-      <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6 h-80 flex items-center justify-center text-gray-500 animate-pulse">
-        Initializing Dynamic Topology...
+      <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6 h-80 flex items-center justify-center text-gray-500 font-mono">
+        {loading ? "Initializing Dynamic Topology..." : "Waiting for initial telemetry... (may take up to 60s)"}
       </div>
     );
   }
