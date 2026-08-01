@@ -61,13 +61,13 @@ export const TopologyGraph = () => {
       </div>
 
       <div className="relative w-full overflow-x-auto">
-        <svg width="900" height="300" className="mx-auto block" style={{ background: 'transparent' }}>
+        <svg width="900" height="350" className="mx-auto block" style={{ background: 'transparent' }}>
           
           <defs>
-            <marker id="arrow-normal" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <marker id="arrow-normal" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="5" markerHeight="5" orient="auto">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151" />
             </marker>
-            <marker id="arrow-active" viewBox="0 0 10 10" refX="32" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <marker id="arrow-active" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="5" markerHeight="5" orient="auto">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" />
             </marker>
           </defs>
@@ -75,11 +75,15 @@ export const TopologyGraph = () => {
           {edges.map((edge, idx) => {
             const sourcePos = fixedPositions[edge.source];
             const targetPos = fixedPositions[edge.target];
-            if (!sourcePos || !targetPos) return null;
+            const sourceExists = nodes.some(n => n.service_name === edge.source);
+            const targetExists = nodes.some(n => n.service_name === edge.target);
+            
+            if (!sourcePos || !targetPos || !sourceExists || !targetExists) return null;
 
             const isActive = edge.activePropagationCount > 0;
             const strokeColor = isActive ? '#f43f5e' : '#374151'; // rose-500 vs gray-700
-            const strokeWidth = isActive ? Math.min(8, 2 + edge.activePropagationCount * 1.5) : 2;
+            // Limit stroke width so the arrow marker doesn't scale out of control
+            const strokeWidth = isActive ? Math.min(4, 2 + edge.activePropagationCount * 0.2) : 2;
             const marker = isActive ? "url(#arrow-active)" : "url(#arrow-normal)";
 
             return (
