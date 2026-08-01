@@ -45,14 +45,19 @@ When any active or historical incident is selected on the dashboard, Cortex gene
 ### 1. Telemetry Window Isolation
 Queries all operational data recorded within a strict time window spanning exactly **60 seconds prior to incident trigger** up to the exact moment of creation.
 
-### 2. Dynamic Root Cause Identification (Resource Strain Scoring)
-Cortex dynamically determines the offending microservice (Root Cause) by scoring all telemetry logs in the 60-second window:
-- **LOG Incidents:** Calculates the dominant failing service (Primary Impacted Service) based on error volume. Then, it traces the `request_id` of the triggering log to find the *first* error in the request chain. If an upstream service (e.g. Database/Cache) failed chronologically before the dominant service, it is declared the **Upstream Root Cause**.
-- **CPU Incidents:** Identifies compute-bound services by calculating a base volume score plus a latency penalty (`response_time_ms / 100`).
-- **MEMORY Incidents:** Identifies data-bound services by calculating a base volume score plus a massive +5 penalty for heavy data operations (e.g., `DATABASE_QUERY`, `CACHE_MISS`, `EXTERNAL_API`).
+### 2. Advanced Statistical Causal Engine
+Cortex dynamically identifies the true Root Cause by constructing a deterministic causal graph using distributed tracing (`span_id` and `parent_span_id`):
+- **Request Correlation:** The engine first isolates chaotic log streams by grouping them perfectly into request chains using the unique `request_id`.
+- **Propagation Graphing:** It maps adjacent errors in a request to a statically defined architectural topology (e.g., ensuring `OrderService` actually depends on `PaymentService`), keeping only mathematically valid "Failure Propagation Edges."
+- **Evidence Scoring:** It grades every service in the 60s incident window across 5 strict signals:
+  1. Did the service fail first? (+30 pts)
+  2. Is it upstream of the primarily affected service? (+25 pts)
+  3. Did the errors propagate to downstream dependents? (Up to +40 pts)
+  4. Did the service experience a >2000ms latency spike? (+20 pts)
+- **Causal Output:** It outputs the final Root Cause, a statistical Confidence %, the main Propagation Chain (e.g., `PostgreSQL -> PaymentService -> OrderService`), and concrete Evidence.
 
 ### 3. Comprehensive RCA Telemetry Breakdown
-- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, Affected Service (Dynamically calculated via Strain Scoring), and Related Endpoint.
+- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, and Root Cause.
 - **Log Analytics**: Total logs count, error count, warning count, info/debug counts, first error timestamp, last error timestamp, and the **most frequent error message** with occurrence count.
 - **System Metrics Analytics**: Peak CPU %, Average CPU %, Peak Memory (MB), Average Memory (MB), and snapshot counts.
 

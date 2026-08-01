@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import { getActiveIncident, triggerIncident, resolveIncident } from '../utils/incidentManager.js';
 import { getIO } from '../config/socket.js';
+import crypto from 'crypto';
 
 const requestFlowScenarios = [
   // Scenario 1: Order Placement Flow
@@ -18,33 +19,20 @@ const requestFlowScenarios = [
     name: 'Payment Gateway Timeout Flow',
     steps: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/checkout', level: 'INFO', message: 'User initiated checkout process.', statusCode: 200, delayMs: 0 },
+      { serviceName: 'Order Service', eventType: 'API_REQUEST', endpoint: '/api/v1/orders', level: 'INFO', message: 'User initiated order.', statusCode: 200, delayMs: 15 },
       { serviceName: 'Payment Service', eventType: 'EXTERNAL_API', endpoint: '/api/v1/payments/charge', level: 'ERROR', message: 'Payment gateway timeout after 5000ms: Connection refused.', statusCode: 504, delayMs: 120 },
-      { serviceName: 'Order Service', eventType: 'ORDER', endpoint: '/api/v1/orders/cancel', level: 'WARN', message: 'Order payment failed. Reverting inventory hold.', statusCode: 400, delayMs: 30 }
+      { serviceName: 'Order Service', eventType: 'ORDER', endpoint: '/api/v1/orders/cancel', level: 'ERROR', message: 'Order payment failed. Reverting inventory hold.', statusCode: 400, delayMs: 30 }
     ]
   },
-  // Scenario 3: Product Search & Cache Miss Flow
+  // Scenario 3: Database Propagation Flow
   {
-    name: 'Search & Cache Miss Flow',
+    name: 'Database Propagation Flow',
     steps: [
-      { serviceName: 'Search Service', eventType: 'API_REQUEST', endpoint: '/api/v1/search', level: 'INFO', message: 'Search query executing: query="laptop".', statusCode: 200, delayMs: 0 },
-      { serviceName: 'Product Service', eventType: 'CACHE_MISS', endpoint: '/api/v1/products', level: 'WARN', message: 'Cache miss for key: product_catalog_laptop. Falling back to DB.', statusCode: 200, delayMs: 25 },
-      { serviceName: 'Product Service', eventType: 'DATABASE_QUERY', endpoint: '/api/v1/products', level: 'INFO', message: 'Executing database query for catalog items.', statusCode: 200, delayMs: 85 }
-    ]
-  },
-  // Scenario 4: Authentication Exception Flow
-  {
-    name: 'Authentication Exception Flow',
-    steps: [
-      { serviceName: 'Authentication Service', eventType: 'AUTHENTICATION', endpoint: '/api/v1/auth/login', level: 'WARN', message: 'Invalid credentials provided for user payload.', statusCode: 401, delayMs: 0 },
-      { serviceName: 'User Service', eventType: 'SYSTEM', endpoint: '/api/v1/users/lockout', level: 'INFO', message: 'Failed attempt logged for IP 192.168.1.45.', statusCode: 401, delayMs: 10 }
-    ]
-  },
-  // Scenario 5: Database Timeout Flow
-  {
-    name: 'Database Timeout Flow',
-    steps: [
-      { serviceName: 'Inventory Service', eventType: 'API_REQUEST', endpoint: '/api/v1/inventory/check', level: 'INFO', message: 'Inventory lookup for item SKU-88492.', statusCode: 200, delayMs: 0 },
-      { serviceName: 'Inventory Service', eventType: 'DATABASE_ERROR', endpoint: '/api/v1/inventory/check', level: 'ERROR', message: 'Database query took too long: Pool client acquisition timeout.', statusCode: 500, delayMs: 300 }
+      { serviceName: 'Order Service', eventType: 'API_REQUEST', endpoint: '/api/v1/orders', level: 'INFO', message: 'Order query.', statusCode: 200, delayMs: 0 },
+      { serviceName: 'Payment Service', eventType: 'API_REQUEST', endpoint: '/api/v1/payments', level: 'INFO', message: 'Payment query.', statusCode: 200, delayMs: 15 },
+      { serviceName: 'PostgreSQL', eventType: 'DATABASE_ERROR', endpoint: '/api/v1/db', level: 'ERROR', message: 'Database query took too long: Pool client acquisition timeout.', statusCode: 500, delayMs: 300 },
+      { serviceName: 'Payment Service', eventType: 'EXTERNAL_API', endpoint: '/api/v1/payments/charge', level: 'ERROR', message: 'Payment failed due to db.', statusCode: 500, delayMs: 50 },
+      { serviceName: 'Order Service', eventType: 'ORDER', endpoint: '/api/v1/orders/cancel', level: 'ERROR', message: 'Order failed due to payment.', statusCode: 500, delayMs: 30 }
     ]
   }
 ];
@@ -64,16 +52,19 @@ export const startLogGenerator = () => {
     // Select random scenario
     const scenario = requestFlowScenarios[Math.floor(Math.random() * requestFlowScenarios.length)];
 
+    let parentSpanId = null;
+
     for (const step of scenario.steps) {
       const timestamp = new Date().toISOString();
       const responseTimeMs = step.delayMs + Math.floor(Math.random() * 25);
+      const spanId = crypto.randomUUID();
 
       try {
         // 1. Insert Enriched Telemetry Log into PostgreSQL
         const insertRes = await pool.query(
           `INSERT INTO logs 
-            (service_name, request_id, event_type, level, message, endpoint, status_code, response_time_ms, timestamp) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+            (service_name, request_id, event_type, level, message, endpoint, status_code, response_time_ms, timestamp, span_id, parent_span_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
            RETURNING *`,
           [
             step.serviceName,
@@ -84,12 +75,17 @@ export const startLogGenerator = () => {
             step.endpoint,
             step.statusCode,
             responseTimeMs,
-            timestamp
+            timestamp,
+            spanId,
+            parentSpanId
           ]
         );
 
         const insertedLog = insertRes.rows[0];
         console.log(`[Worker] [${step.serviceName}] [${requestId}] [${step.eventType}] [${step.level}] ${step.message}`);
+
+        // Update parent for next step (simple chain propagation)
+        parentSpanId = spanId;
 
         // 2. Incident Detection Evaluation
         const activeIncident = await getActiveIncident(pool, 'LOG');
@@ -115,7 +111,9 @@ export const startLogGenerator = () => {
           endpoint: step.endpoint,
           status_code: step.statusCode,
           response_time_ms: responseTimeMs,
-          timestamp
+          timestamp,
+          span_id: spanId,
+          parent_span_id: parentSpanId
         });
 
         if (incidentChanged) {

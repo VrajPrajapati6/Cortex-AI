@@ -173,18 +173,61 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [] 
               
               {/* Primary RCA Explanation Card */}
               <div className="p-4 rounded-lg bg-indigo-50/70 border border-indigo-200">
-                <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider mb-2">
-                  <Zap className="w-4 h-4 text-indigo-600" />
-                  Root Cause Diagnosis
-                </div>
-                <p className="text-sm text-indigo-950 leading-relaxed font-medium">
-                  {rcaData?.rootCauseExplanation}
-                </p>
-                {incident?.resolutionReason && (
-                  <div className="mt-3 text-xs text-indigo-800 font-mono border-t border-indigo-200/80 pt-2">
-                    Resolution note: {incident.resolutionReason}
+                <div className="flex flex-col gap-4">
+                  {/* Title & Confidence */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm tracking-wider">
+                      <Zap className="w-5 h-5 text-indigo-600" />
+                      Root Cause: {rcaData?.causalGraph?.rootCause || incident?.affectedService}
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs text-indigo-700 font-semibold uppercase">Confidence</span>
+                      <span className="text-2xl font-black font-mono text-indigo-900">{rcaData?.causalGraph?.confidence || 0}%</span>
+                    </div>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                    {/* Propagation Chain */}
+                    <div>
+                      <h3 className="text-xs font-semibold text-indigo-800 uppercase mb-3 border-b border-indigo-200 pb-1">Propagation Chain</h3>
+                      <div className="flex flex-col gap-2 relative">
+                        {rcaData?.causalGraph?.chain?.map((svc, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-indigo-500 z-10 relative"></div>
+                            {idx < rcaData?.causalGraph?.chain.length - 1 && (
+                              <div className="absolute left-1 top-2 bottom-0 w-0.5 bg-indigo-200 -ml-px"></div>
+                            )}
+                            <span className="text-sm font-mono font-semibold text-indigo-950">{svc}</span>
+                          </div>
+                        )) || (
+                          <span className="text-sm text-indigo-600 italic">No propagation detected</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Evidence */}
+                    <div>
+                      <h3 className="text-xs font-semibold text-indigo-800 uppercase mb-3 border-b border-indigo-200 pb-1">Evidence</h3>
+                      <ul className="space-y-2 text-sm text-indigo-900">
+                        {rcaData?.causalGraph?.evidence?.failedFirst && (
+                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Failed first in the incident window</li>
+                        )}
+                        {rcaData?.causalGraph?.evidence?.upstreamOfAffected && (
+                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Upstream dependency of {incident?.primaryImpactedService}</li>
+                        )}
+                        {rcaData?.causalGraph?.evidence?.propagationCount > 0 && (
+                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Propagation observed in {rcaData?.causalGraph?.evidence?.propagationCount} requests</li>
+                        )}
+                        {rcaData?.causalGraph?.evidence?.latencySpike && (
+                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Latency spike detected</li>
+                        )}
+                        {rcaData?.causalGraph?.evidence?.errorCount > 0 && (
+                          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> {rcaData?.causalGraph?.evidence?.errorCount} downstream failures followed</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Diagnostic Key Telemetry Grid */}
