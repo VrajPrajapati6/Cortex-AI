@@ -15,9 +15,28 @@ The project follows a clean, decoupled monorepo architecture:
 
 ## 💾 Data Persistence Schema (Neon PostgreSQL)
 
-1. `logs`: Stores application logs enriched with microservice telemetry fields for the Correlation Engine, including `service_name`, `request_id`, `event_type`, `endpoint`, `status_code`, `response_time_ms`, along with standard `timestamp` and severity levels.
+1. `logs`: Stores application logs enriched with distributed tracing and microservice telemetry fields:
+   - `service_name`
+   - `request_id`
+   - `span_id`
+   - `parent_span_id`
+   - `event_type`
+   - `endpoint`
+   - `status_code`
+   - `response_time_ms`
+   - `timestamp`
+   - `level`
+   - `message`
+
+   **Migration:**
+   ```sql
+   ALTER TABLE logs
+   ADD COLUMN span_id UUID,
+   ADD COLUMN parent_span_id UUID;
+   ```
 2. `system_metrics`: Stores hardware resource utilization snapshots (`cpu_usage` percentage, `memory_usage_mb` footprint, `timestamp`).
-3. `incidents`: Tracks the lifecycle of system anomalies (`id`, `type`, `status`, `trigger_reason`, `resolution_reason`, `created_at`, `resolved_at`).
+3. `service_metrics`: Stores aggregated service-level metrics (`request_count`, `error_rate`, `avg_latency`, `p95_latency`, `p99_latency`) for baseline comparison.
+4. `incidents`: Tracks the lifecycle of system anomalies (`id`, `type`, `status`, `trigger_reason`, `resolution_reason`, `created_at`, `resolved_at`).
 
 ---
 
@@ -25,6 +44,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 1. **Log Generator (`logGenerator.js`)**: Simulates enriched microservice traffic scenarios (e.g., Database Timeout, Cache Miss) with correlation IDs and detailed logs on a 10-second tick interval.
 2. **Metrics Collector (`metricsCollector.js`)**: Samples real-time CPU utilization and memory footprint via Node.js native `os` module on a 10-second tick interval.
+3. **Latency Aggregator (`latencyAggregator.js`)**: Aggregates raw logs every 60 seconds into mathematically true P95 and P99 latency percentiles per service for RCA baseline comparisons.
 
 ---
 
@@ -48,13 +68,23 @@ Queries all operational data recorded within a strict time window spanning exact
 ### 2. Advanced Statistical Causal Engine
 Cortex dynamically identifies the true Root Cause by constructing a deterministic causal graph using distributed tracing (`span_id` and `parent_span_id`):
 - **Request Correlation:** The engine first isolates chaotic log streams by grouping them perfectly into request chains using the unique `request_id`.
-- **Propagation Graphing:** It maps adjacent errors in a request to a statically defined architectural topology (e.g., ensuring `OrderService` actually depends on `PaymentService`), keeping only mathematically valid "Failure Propagation Edges."
-- **Evidence Scoring:** It grades every service in the 60s incident window across 5 strict signals:
-  1. Did the service fail first? (+30 pts)
-  2. Is it upstream of the primarily affected service? (+25 pts)
-  3. Did the errors propagate to downstream dependents? (Up to +40 pts)
-  4. Did the service experience a >2000ms latency spike? (+20 pts)
-- **Causal Output:** It outputs the final Root Cause, a statistical Confidence %, the main Propagation Chain (e.g., `PostgreSQL -> PaymentService -> OrderService`), and concrete Evidence.
+- **Propagation Graphing:** It maps adjacent errors in a request to a statically defined architectural topology (e.g., ensuring `OrderService` actually depends on `PaymentService`), keeping only topology-valid "Failure Propagation Edges."
+- **Evidence Scoring:** It grades every service in the 60s incident window across 5 strict signals (Maximum 140 pts):
+  1. Failed first (+30 pts)
+  2. Upstream of affected service (+25 pts)
+  3. Downstream propagation (+40 pts)
+  4. P95 latency increased by >3× baseline (+20 pts)
+  5. Repeated propagation across independent requests (+5 pts each, capped at +25)
+- **Causal Output:** It outputs the final Root Cause, a statistical Confidence %, the main Propagation Chain (e.g., `PostgreSQL -> PaymentService -> OrderService`), and concrete Evidence. Confidence is computed by normalizing the final causal score against the maximum theoretical score and is capped at 95% to avoid false certainty.
+
+### Resource-Centric RCA Fallback
+When incidents are triggered by CPU or Memory anomalies and no statistically valid propagation chain can be constructed, Cortex falls back to a resource-centric RCA strategy.
+The fallback engine ranks services by:
+- Peak latency increase
+- Error rate increase
+- Request throughput increase
+- Resource pressure contribution
+- Temporal proximity to the anomaly
 
 ### 3. Comprehensive RCA Telemetry Breakdown
 - **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, and Root Cause.

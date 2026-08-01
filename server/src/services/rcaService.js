@@ -43,7 +43,7 @@ export function runRCA(
     rootCause: root.service,
     confidence: Math.min(
       95,
-      Math.round((root.score / 120) * 100)
+      Math.round((root.score / 140) * 100)
     ),
     evidence: root.evidence,
     rankings: results

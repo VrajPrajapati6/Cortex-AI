@@ -2,6 +2,7 @@ import app from './app.js';
 import { config } from './config/env.config.js';
 import { startLogGenerator } from './workers/logGenerator.js';
 import { startMetricsCollector } from './workers/metricsCollector.js';
+import { startLatencyAggregator } from './workers/latencyAggregator.js';
 
 import { initSocket } from './config/socket.js';
 
@@ -14,6 +15,7 @@ const server = app.listen(config.port, () => {
   // Start the background workers
   startLogGenerator();
   startMetricsCollector();
+  startLatencyAggregator();
 });
 
 const handleShutdown = (signal) => {
