@@ -4,7 +4,7 @@ Cortex is a comprehensive, production-inspired backend observability platform de
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 The project follows a clean, decoupled monorepo architecture:
 
@@ -13,7 +13,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 ---
 
-## 💾 Data Persistence Schema (Neon PostgreSQL)
+## Data Persistence Schema (Neon PostgreSQL)
 
 1. `logs`: Stores application logs enriched with distributed tracing and microservice telemetry fields:
    - `service_name`
@@ -40,7 +40,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 ---
 
-## ⚙️ Background Telemetry Workers
+## Background Telemetry Workers
 
 1. **Log Generator (`logGenerator.js`)**: Simulates enriched microservice traffic scenarios (e.g., Database Timeout, Cache Miss) with correlation IDs and detailed logs on a 10-second tick interval.
 2. **Metrics Collector (`metricsCollector.js`)**: Samples real-time CPU utilization and memory footprint via Node.js native `os` module on a 10-second tick interval.
@@ -48,7 +48,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 ---
 
-## 🚨 Automated Incident Engine & Lifecycle
+## Automated Incident Engine & Lifecycle
 
 Cortex monitors real-time operational streams and automatically triggers and resolves incidents:
 
@@ -58,7 +58,7 @@ Cortex monitors real-time operational streams and automatically triggers and res
 
 ---
 
-## 🩺 Service Health & SLO Layer
+## Service Health & SLO Layer
 
 Cortex proactively monitors system degradation before incidents even occur using a live **Service Health Map**:
 - **SLO Metrics Tracked:** `request_count`, `error_rate`, `availability %`, and `p95_latency` per service.
@@ -76,7 +76,7 @@ The dashboard includes an interactive, live-updating **SVG Topology Graph** that
 
 ---
 
-## 🔍 Root Cause Analysis (RCA) Module
+## Root Cause Analysis (RCA) Module
 
 When any active or historical incident is selected on the dashboard, Cortex generates a deterministic **Root Cause Analysis (RCA)** report:
 
@@ -111,18 +111,18 @@ The fallback engine ranks services by:
 
 ### 3. Chronological Incident Event Timeline
 Reconstructs a timestamped vertical event timeline highlighting key operational milestones:
-- ⏱️ **Telemetry Collection Window Initiated** (Baseline timestamp)
-- ⚠️ **First Error Log Detected** (Earliest error message & timestamp)
-- 📈 **Metric Peak Recorded** (Highest CPU % / Memory MB peak timestamp)
-- 🚨 **Incident Triggered** (Creation timestamp & trigger reason)
-- ✅ **Incident Resolved** (Resolution timestamp & resolution reason)
+- **Telemetry Collection Window Initiated** (Baseline timestamp)
+- **First Error Log Detected** (Earliest error message & timestamp)
+- **Metric Peak Recorded** (Highest CPU % / Memory MB peak timestamp)
+- **Incident Triggered** (Creation timestamp & trigger reason)
+- **Incident Resolved** (Resolution timestamp & resolution reason)
 
 ### 4. Interactive RCA Dashboard Panel
 Presents an enterprise-grade Incident Details Modal featuring a **Root Cause Diagnosis Card**, diagnostic KPI grid, interactive event timeline, and tabbed scoped views for incident-specific logs and hardware charts.
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### 1. Database Configuration
 Ensure your Neon PostgreSQL connection URL is configured.
@@ -152,4 +152,4 @@ npm run dev
 ```
 
 #### Open in Browser
-👉 **`http://localhost:3000`**
+**`http://localhost:3000`**
