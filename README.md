@@ -1,4 +1,4 @@
-# Cortex: The AI-Powered Backend Observability & Root Cause Analysis Platform
+# Cortex — Distributed Observability & Root Cause Analysis Platform
 
 Welcome to **Cortex**! This document serves as the ultimate, exhaustive guide to the entire platform. Whether you are a newcomer to the repository, a developer looking to contribute, or a senior engineer reviewing the architectural decisions, this guide leaves no stone unturned. It explains every single component, algorithm, database table, mathematical scoring system, and feature we have built—all in plain, easy-to-understand English.
 
@@ -18,10 +18,10 @@ Consider this scenario: A user tries to place an order, but the website shows an
 
 If you are an on-call engineer, your dashboard just lit up with hundreds of red errors across four different services. Was the Order Service actually broken? Or did it fail because the Payment Service timed out? And did the Payment Service time out because the Database was too slow? 
 
-Cortex is a complete, production-ready Observability Platform built from scratch to solve this exact problem autonomously. Cortex does three main things without any human intervention:
+**Cortex** is a complete, production-inspired Observability Platform built from scratch to solve this exact problem. Cortex does three main things autonomously:
 1. Continuously Monitors your entire distributed system (Logs, CPU load, and Memory footprint).
 2. Automatically Detects Anomalies and triggers "Incidents" when thresholds are breached.
-3. Performs Root Cause Analysis (RCA) mathematically. It acts like an AI detective, tracing the failure through the maze of microservices to pinpoint the exact service that started the fire, and explaining exactly why it made that conclusion with a confidence score and concrete evidence.
+3. Performs Root Cause Analysis (RCA) deterministically. It uses graph traversal and evidence scoring to trace the failure through the maze of microservices, pinpoint the exact service that started the fire, and explain exactly why it made that conclusion with a confidence score and concrete evidence.
 
 ---
 
