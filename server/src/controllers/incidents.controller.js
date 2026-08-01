@@ -323,6 +323,55 @@ export const getIncidentRCA = async (req, res, next) => {
       rootCauseExplanation = `${incident.trigger_reason}. A total of ${errorCount} error logs were recorded. Most frequent error: "${mostFrequentError?.message || 'N/A'}" (${mostFrequentError?.count || 0} occurrences).`;
     }
 
+    // --- Incident Diff: Before vs During ---
+    const rcService = rca.rootCause;
+    let incidentDiff = null;
+
+    if (rcService && rcService !== 'Unknown') {
+      const baselineStart = new Date(new Date(incident.created_at).getTime() - 15 * 60000).toISOString();
+      const incidentStart = incident.created_at;
+      const incidentEnd = incident.resolved_at || new Date().toISOString();
+
+      const baselineQuery = await pool.query(
+        `SELECT AVG(p95_latency) as avg_p95, AVG(error_rate) as avg_error, AVG(request_count) as avg_req
+         FROM service_metrics WHERE service_name = $1 AND timestamp >= $2 AND timestamp <= $3`,
+        [rcService, baselineStart, incidentStart]
+      );
+      
+      const duringQuery = await pool.query(
+        `SELECT AVG(p95_latency) as avg_p95, AVG(error_rate) as avg_error, AVG(request_count) as avg_req
+         FROM service_metrics WHERE service_name = $1 AND timestamp >= $2 AND timestamp <= $3`,
+        [rcService, incidentStart, incidentEnd]
+      );
+
+      const bData = baselineQuery.rows[0];
+      let dData = duringQuery.rows[0];
+
+      // If the incident just started, there might not be a service_metrics snapshot in the active window yet.
+      // Fallback to the absolute latest snapshot available.
+      if (!dData || dData.avg_p95 === null) {
+        const fallbackQuery = await pool.query(
+          `SELECT p95_latency as avg_p95, error_rate as avg_error, request_count as avg_req
+           FROM service_metrics WHERE service_name = $1 ORDER BY timestamp DESC LIMIT 1`,
+          [rcService]
+        );
+        dData = fallbackQuery.rows[0];
+      }
+
+      incidentDiff = {
+        baseline: {
+          p95_latency: parseFloat(bData?.avg_p95) || 0,
+          error_rate: parseFloat(bData?.avg_error) || 0,
+          request_rate: parseFloat(bData?.avg_req) || 0
+        },
+        during: {
+          p95_latency: parseFloat(dData?.avg_p95) || 0,
+          error_rate: parseFloat(dData?.avg_error) || 0,
+          request_rate: parseFloat(dData?.avg_req) || 0
+        }
+      };
+    }
+
     const rcaResponse = {
       incident: {
         id: incident.id,
@@ -346,6 +395,7 @@ export const getIncidentRCA = async (req, res, next) => {
         chain: chain,
         evidence: rca.evidence
       },
+      incidentDiff,
       logSummary: {
         totalRelatedLogs: logs.length,
         errorCount,

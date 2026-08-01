@@ -104,7 +104,12 @@ The fallback engine ranks services by:
 - Resource pressure contribution
 - Temporal proximity to the anomaly
 
-### 3. Comprehensive RCA Telemetry Breakdown
+### 3. Incident Impact Diff (Before vs During)
+To quantify the exact impact of an anomaly, Cortex isolates the **Root Cause service** and computes a statistical diff of its performance metrics during the incident window against a clean **15-minute pre-incident baseline**.
+- Quantifies exact percentage degradation across **P95 Latency**, **Error Rate**, and **Request Volume**.
+- Renders a visually distinct Before vs During comparison UI so on-call engineers instantly understand the magnitude of the outage.
+
+### 4. Comprehensive RCA Telemetry Breakdown
 - **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, and Root Cause.
 - **Log Analytics**: Total logs count, error count, warning count, info/debug counts, first error timestamp, last error timestamp, and the **most frequent error message** with occurrence count.
 - **System Metrics Analytics**: Peak CPU %, Average CPU %, Peak Memory (MB), Average Memory (MB), and snapshot counts.
