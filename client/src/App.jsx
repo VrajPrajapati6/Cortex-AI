@@ -6,6 +6,7 @@ import { MetricsCharts } from './components/MetricsCharts';
 import { LogsTable } from './components/LogsTable';
 import { IncidentsList } from './components/IncidentsList';
 import { IncidentRcaModal } from './components/IncidentRcaModal';
+import ServiceHealthMap from './components/ServiceHealthMap';
 
 const socket = io('http://localhost:5000');
 
@@ -192,6 +193,8 @@ export default function App() {
             /* Normal Live Monitoring View */
             <>
               <SummaryCards summary={summary} />
+              
+              <ServiceHealthMap />
 
               <div className="mb-6">
                 <MetricsCharts metrics={metrics} />

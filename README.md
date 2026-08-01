@@ -58,6 +58,18 @@ Cortex monitors real-time operational streams and automatically triggers and res
 
 ---
 
+## 🩺 Service Health & SLO Layer
+
+Cortex proactively monitors system degradation before incidents even occur using a live **Service Health Map**:
+- **SLO Metrics Tracked:** `request_count`, `error_rate`, `availability %`, and `p95_latency` per service.
+- **Dynamic Baselines:** Calculates a rolling 15-minute moving average of P95 latency for accurate baseline comparison.
+- **Health Rules Engine:**
+  - **Healthy (Green):** `error_rate < 1%` AND `p95_latency <= 2× baseline`
+  - **Degraded (Yellow):** `error_rate >= 1%` OR `p95_latency > 2× baseline`
+  - **Critical (Red):** `error_rate > 5%` OR `p95_latency > 5× baseline`
+
+---
+
 ## 🔍 Root Cause Analysis (RCA) Module
 
 When any active or historical incident is selected on the dashboard, Cortex generates a deterministic **Root Cause Analysis (RCA)** report:
