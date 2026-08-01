@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
 
-export const LogsTable = ({ 
-  logs = [], 
-  pagination = {}, 
-  selectedLevel, 
+export const LogsTable = ({
+  logs = [],
+  pagination = {},
+  selectedLevel,
   setSelectedLevel,
   selectedService = 'ALL',
   setSelectedService,
   selectedEventType = 'ALL',
   setSelectedEventType,
-  searchTerm, 
+  searchTerm,
   setSearchTerm,
   page,
   setPage,
@@ -37,7 +37,7 @@ export const LogsTable = ({
   const setCurrentSearch = isIncidentView && !setSearchTerm ? setLocalSearch : setSearchTerm;
 
   const levels = ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG'];
-  
+
   const servicesList = [
     'ALL',
     'User Service',
@@ -70,16 +70,16 @@ export const LogsTable = ({
   // Client-side filtering when in Incident View
   const displayedLogs = useMemo(() => {
     if (!isIncidentView) return logs;
-    
+
     return logs.filter((log) => {
       const levelMatch = currentLevel === 'ALL' || (log.level || '').toUpperCase() === currentLevel;
       const sName = log.service_name || log.serviceName || 'System';
       const serviceMatch = currentService === 'ALL' || sName === currentService;
       const eType = log.event_type || log.eventType || 'SYSTEM';
       const typeMatch = currentEventType === 'ALL' || eType === currentEventType;
-      
+
       const query = currentSearch.trim().toLowerCase();
-      const searchMatch = !query || 
+      const searchMatch = !query ||
         (log.message || '').toLowerCase().includes(query) ||
         (log.request_id || log.requestId || '').toLowerCase().includes(query) ||
         sName.toLowerCase().includes(query) ||
@@ -119,30 +119,29 @@ export const LogsTable = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full overflow-hidden">
-      
+
       {/* Header & Filter Controls */}
-      <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gray-50 max-w-full">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
-            {isIncidentView ? 'Incident Log Trail (±1 Min Window)' : 'Microservice Logs Explorer'}
+      <div className="p-3.5 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gray-50">
+        <div className="flex flex-col">
+          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider whitespace-nowrap">
+            {isIncidentView ? 'Incident Log Trail' : 'Microservice Logs Explorer'}
           </h2>
-          <span className="text-xs font-mono text-gray-500 font-medium whitespace-nowrap">
-            ({isIncidentView ? displayedLogs.length : (pagination.total || logs.length)} records)
+          <span className="text-[11px] font-mono text-gray-500 font-medium">
+            {isIncidentView ? `±1 Min Isolation Window • (${displayedLogs.length} records)` : `(${pagination.total || logs.length} records)`}
           </span>
         </div>
 
-        {/* Filter Controls */}
-        <div className="flex items-center gap-2 flex-wrap max-w-full">
-          
+        {/* Filter Controls (Single Row Layout) */}
+        <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+
           {/* Log Level Filter */}
-          <div className="flex bg-white rounded-md border border-gray-300 overflow-hidden text-xs shadow-xs flex-wrap sm:flex-nowrap">
+          <div className="flex bg-white rounded-md border border-gray-300 overflow-hidden text-xs shadow-xs shrink-0">
             {levels.map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => { setCurrentLevel && setCurrentLevel(lvl); setPage && setPage(1); }}
-                className={`px-2.5 py-1.5 font-semibold transition-colors ${
-                  currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'
-                } ${lvl !== 'ALL' ? 'border-l border-gray-200' : ''}`}
+                className={`px-2 py-1 font-semibold transition-colors ${currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'
+                  } ${lvl !== 'ALL' ? 'border-l border-gray-200' : ''}`}
               >
                 {lvl}
               </button>
@@ -153,7 +152,7 @@ export const LogsTable = ({
           <select
             value={currentService}
             onChange={(e) => { setCurrentService && setCurrentService(e.target.value); setPage && setPage(1); }}
-            className="px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer max-w-[150px] truncate"
+            className="px-2 py-1 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer shrink-0 max-w-[135px] truncate"
           >
             {servicesList.map(s => (
               <option key={s} value={s}>{s === 'ALL' ? 'All Services' : s}</option>
@@ -164,7 +163,7 @@ export const LogsTable = ({
           <select
             value={currentEventType}
             onChange={(e) => { setCurrentEventType && setCurrentEventType(e.target.value); setPage && setPage(1); }}
-            className="px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer max-w-[150px] truncate"
+            className="px-2 py-1 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer shrink-0 max-w-[135px] truncate"
           >
             {eventTypesList.map(et => (
               <option key={et} value={et}>{et === 'ALL' ? 'All Event Types' : et}</option>
@@ -174,10 +173,10 @@ export const LogsTable = ({
           {/* Search Input */}
           <input
             type="text"
-            placeholder="Search logs / Request ID..."
+            placeholder="Search logs / RequestID"
             value={currentSearch}
             onChange={(e) => { setCurrentSearch && setCurrentSearch(e.target.value); setPage && setPage(1); }}
-            className="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px] max-w-[200px] flex-1 font-mono shadow-xs"
+            className="px-2.5 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 w-44 font-mono shadow-xs shrink-0"
           />
         </div>
       </div>
@@ -201,8 +200,8 @@ export const LogsTable = ({
               displayedLogs.map((log) => (
                 <tr key={log.id || Math.random()} className="hover:bg-gray-50 transition-colors">
                   <td className="py-2.5 px-3 whitespace-nowrap text-gray-500 text-[11px]">
-                    {new Date(log.timestamp).toLocaleString([], { 
-                      month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                    {new Date(log.timestamp).toLocaleString([], {
+                      month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
                     })}
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
@@ -211,14 +210,13 @@ export const LogsTable = ({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <button 
+                    <button
                       onClick={() => onTraceSelect && onTraceSelect(log.request_id || log.requestId)}
                       disabled={!onTraceSelect}
-                      className={`px-2 py-0.5 rounded border text-[10px] font-bold font-mono transition-colors ${
-                        onTraceSelect 
-                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 cursor-pointer' 
+                      className={`px-2 py-0.5 rounded border text-[10px] font-bold font-mono transition-colors ${onTraceSelect
+                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 cursor-pointer'
                           : 'bg-gray-100 border-gray-300 text-gray-800'
-                      }`}
+                        }`}
                       title={onTraceSelect ? "View Distributed Trace Waterfall" : ""}
                     >
                       {log.request_id || log.requestId || 'N/A'}
@@ -230,12 +228,11 @@ export const LogsTable = ({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      log.level === 'ERROR' ? 'bg-red-100 text-red-700' :
-                      log.level === 'WARN' ? 'bg-yellow-100 text-yellow-800' :
-                      log.level === 'INFO' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.level === 'ERROR' ? 'bg-red-100 text-red-700' :
+                        log.level === 'WARN' ? 'bg-yellow-100 text-yellow-800' :
+                          log.level === 'INFO' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-600'
+                      }`}>
                       {log.level}
                     </span>
                   </td>
