@@ -17,13 +17,16 @@ const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
   const minVal = 0;
   
   const width = 600;
-  const padding = 20;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
+  const paddingLeft = 35;
+  const paddingRight = 10;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
 
   const points = data.map((d, i) => {
-    const x = padding + (i / Math.max(data.length - 1, 1)) * chartWidth;
-    const y = height - padding - ((d[dataKey] - minVal) / (maxVal - minVal)) * chartHeight;
+    const x = paddingLeft + (i / Math.max(data.length - 1, 1)) * chartWidth;
+    const y = height - paddingBottom - ((d[dataKey] - minVal) / (maxVal - minVal)) * chartHeight;
     return { x, y, value: d[dataKey], label: d.time };
   });
 
@@ -31,7 +34,7 @@ const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
     return index === 0 ? `M ${point.x} ${point.y}` : `${acc} L ${point.x} ${point.y}`;
   }, '');
 
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`;
 
   return (
     <div className="relative w-full overflow-hidden">
@@ -43,9 +46,35 @@ const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
           </linearGradient>
         </defs>
 
-        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#e5e7eb" strokeDasharray="3 3" />
-        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#e5e7eb" strokeDasharray="3 3" />
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e5e7eb" />
+        <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="#e5e7eb" strokeDasharray="3 3" />
+        <line x1={paddingLeft} y1={paddingTop + chartHeight / 2} x2={width - paddingRight} y2={paddingTop + chartHeight / 2} stroke="#e5e7eb" strokeDasharray="3 3" />
+        <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#e5e7eb" />
+
+        {/* Y-axis Labels */}
+        <text x={paddingLeft - 5} y={paddingTop + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+          {Math.round(maxVal)}
+        </text>
+        <text x={paddingLeft - 5} y={paddingTop + chartHeight / 2 + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+          {Math.round((maxVal + minVal) / 2)}
+        </text>
+        <text x={paddingLeft - 5} y={height - paddingBottom + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+          {minVal}
+        </text>
+
+        {/* X-axis Labels */}
+        {data.length > 0 && (
+          <>
+            <text x={paddingLeft} y={height - 10} textAnchor="start" className="text-[10px] fill-gray-400 font-mono">
+              {data[0].time}
+            </text>
+            <text x={paddingLeft + chartWidth / 2} y={height - 10} textAnchor="middle" className="text-[10px] fill-gray-400 font-mono">
+              {data[Math.floor(data.length / 2)].time}
+            </text>
+            <text x={width - paddingRight} y={height - 10} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+              {data[data.length - 1].time}
+            </text>
+          </>
+        )}
 
         <path d={areaD} fill={`url(#gradient-${dataKey})`} />
         <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />

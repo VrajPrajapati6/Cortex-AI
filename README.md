@@ -15,7 +15,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 ## 💾 Data Persistence Schema (Neon PostgreSQL)
 
-1. `logs`: Stores application logs with timestamps and severity levels (`INFO`, `WARN`, `ERROR`, `DEBUG`).
+1. `logs`: Stores application logs enriched with microservice telemetry fields for the Correlation Engine, including `service_name`, `request_id`, `event_type`, `endpoint`, `status_code`, `response_time_ms`, along with standard `timestamp` and severity levels.
 2. `system_metrics`: Stores hardware resource utilization snapshots (`cpu_usage` percentage, `memory_usage_mb` footprint, `timestamp`).
 3. `incidents`: Tracks the lifecycle of system anomalies (`id`, `type`, `status`, `trigger_reason`, `resolution_reason`, `created_at`, `resolved_at`).
 
@@ -23,7 +23,7 @@ The project follows a clean, decoupled monorepo architecture:
 
 ## ⚙️ Background Telemetry Workers
 
-1. **Log Generator (`logGenerator.js`)**: Simulates application traffic and logs on a 10-second tick interval.
+1. **Log Generator (`logGenerator.js`)**: Simulates enriched microservice traffic scenarios (e.g., Database Timeout, Cache Miss) with correlation IDs and detailed logs on a 10-second tick interval.
 2. **Metrics Collector (`metricsCollector.js`)**: Samples real-time CPU utilization and memory footprint via Node.js native `os` module on a 10-second tick interval.
 
 ---
@@ -43,10 +43,16 @@ Cortex monitors real-time operational streams and automatically triggers and res
 When any active or historical incident is selected on the dashboard, Cortex generates a deterministic **Root Cause Analysis (RCA)** report:
 
 ### 1. Telemetry Window Isolation
-Queries all operational data recorded within a isolated time window spanning **60 seconds prior to incident trigger** up to **60 seconds post-resolution** (or current time if active).
+Queries all operational data recorded within a strict time window spanning exactly **60 seconds prior to incident trigger** up to the exact moment of creation.
 
-### 2. Comprehensive RCA Telemetry Breakdown
-- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, Affected Service (`Compute Cluster`, `Memory Pool`, `Express Router`), and Related Endpoint.
+### 2. Dynamic Root Cause Identification (Resource Strain Scoring)
+Cortex dynamically determines the offending microservice (Root Cause) by scoring all telemetry logs in the 60-second window:
+- **LOG Incidents:** Scores services based on sheer error volume (`score = error_count * 10`). Ties are broken chronologically by earliest failure.
+- **CPU Incidents:** Identifies compute-bound services by calculating a base volume score plus a latency penalty (`response_time_ms / 100`).
+- **MEMORY Incidents:** Identifies data-bound services by calculating a base volume score plus a massive +5 penalty for heavy data operations (e.g., `DATABASE_QUERY`, `CACHE_MISS`, `EXTERNAL_API`).
+
+### 3. Comprehensive RCA Telemetry Breakdown
+- **Incident Overview**: Title, Severity (`CRITICAL`, `HIGH`, `MEDIUM`), Status (`ACTIVE`, `RESOLVED`), Duration, Affected Service (Dynamically calculated via Strain Scoring), and Related Endpoint.
 - **Log Analytics**: Total logs count, error count, warning count, info/debug counts, first error timestamp, last error timestamp, and the **most frequent error message** with occurrence count.
 - **System Metrics Analytics**: Peak CPU %, Average CPU %, Peak Memory (MB), Average Memory (MB), and snapshot counts.
 

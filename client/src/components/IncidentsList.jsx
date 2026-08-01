@@ -14,7 +14,10 @@ export const IncidentsList = ({ incidents = [], selectedIncidentId, onSelect }) 
             {incidents.map(inc => (
               <li 
                 key={inc.id}
-                onClick={() => onSelect(inc.id === selectedIncidentId ? null : inc.id)}
+                onClick={() => {
+                  onSelect(inc.id === selectedIncidentId ? null : inc.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedIncidentId === inc.id ? 'bg-blue-50 border-l-4 border-blue-500' : 'border-l-4 border-transparent'}`}
               >
                 <div className="flex items-center justify-between mb-1.5">

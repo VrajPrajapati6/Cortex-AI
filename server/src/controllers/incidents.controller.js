@@ -94,11 +94,9 @@ export const getIncidentRCA = async (req, res, next) => {
 
     const incident = incidentRes.rows[0];
 
-    // Calculate window: 1 minute before created_at to 1 minute after resolved_at / now
+    // Calculate window: 60 seconds prior to incident creation, ending exactly at creation
     const startTime = new Date(new Date(incident.created_at).getTime() - 60000).toISOString();
-    const endTime = incident.resolved_at 
-      ? new Date(new Date(incident.resolved_at).getTime() + 60000).toISOString()
-      : new Date().toISOString();
+    const endTime = new Date(incident.created_at).toISOString();
 
     // Duration calculation
     const startMs = new Date(incident.created_at).getTime();
@@ -126,14 +124,43 @@ export const getIncidentRCA = async (req, res, next) => {
     let firstErrorTimestamp = null;
     let lastErrorTimestamp = null;
     const errorFrequencyMap = {};
+    const serviceErrorMap = {};
+    const serviceCpuScoreMap = {};
+    const serviceMemScoreMap = {};
 
     logs.forEach((log) => {
       const lvl = (log.level || '').toUpperCase();
+      const serviceName = log.service_name || 'Unknown Service';
+      const responseTime = parseFloat(log.response_time_ms) || 0;
+      const eventType = (log.event_type || 'UNKNOWN').toUpperCase();
+
+      // --- Resource Strain Scoring (CPU & Memory) ---
+      if (!serviceCpuScoreMap[serviceName]) serviceCpuScoreMap[serviceName] = { score: 0 };
+      if (!serviceMemScoreMap[serviceName]) serviceMemScoreMap[serviceName] = { score: 0 };
+      
+      // Base Volume Score
+      serviceCpuScoreMap[serviceName].score += 1;
+      serviceMemScoreMap[serviceName].score += 1;
+      
+      // Latency Penalty for CPU (Compute bound)
+      serviceCpuScoreMap[serviceName].score += (responseTime / 100);
+      
+      // Heavy Operation Penalty for Memory (Data bound)
+      if (['DATABASE_QUERY', 'CACHE_MISS', 'EXTERNAL_API'].includes(eventType)) {
+        serviceMemScoreMap[serviceName].score += 5;
+      }
+
+      // --- Error Tracking (LOG) ---
       if (lvl === 'ERROR') {
         errorCount++;
         if (!firstErrorTimestamp) firstErrorTimestamp = log.timestamp;
         lastErrorTimestamp = log.timestamp;
         errorFrequencyMap[log.message] = (errorFrequencyMap[log.message] || 0) + 1;
+        
+        if (!serviceErrorMap[serviceName]) {
+          serviceErrorMap[serviceName] = { count: 0, firstErrorTime: log.timestamp };
+        }
+        serviceErrorMap[serviceName].count++;
       } else if (lvl === 'WARN') {
         warnCount++;
       } else if (lvl === 'INFO') {
@@ -149,6 +176,43 @@ export const getIncidentRCA = async (req, res, next) => {
       if (count > maxFreq) {
         maxFreq = count;
         mostFrequentError = { message: msg, count };
+      }
+    });
+
+    let rootCauseService = null;
+    let topScore = -1;
+    let topServiceFirstErrorTime = null;
+
+    Object.entries(serviceErrorMap).forEach(([service, data]) => {
+      const score = data.count * 10;
+      if (score > topScore) {
+        topScore = score;
+        rootCauseService = service;
+        topServiceFirstErrorTime = data.firstErrorTime;
+      } else if (score === topScore && topScore > -1) {
+        // Tie-breaker: service where the first error appeared first
+        if (new Date(data.firstErrorTime) < new Date(topServiceFirstErrorTime)) {
+          rootCauseService = service;
+          topServiceFirstErrorTime = data.firstErrorTime;
+        }
+      }
+    });
+
+    let cpuRootCauseService = null;
+    let maxCpuScore = -1;
+    Object.entries(serviceCpuScoreMap).forEach(([service, data]) => {
+      if (data.score > maxCpuScore) {
+        maxCpuScore = data.score;
+        cpuRootCauseService = service;
+      }
+    });
+
+    let memRootCauseService = null;
+    let maxMemScore = -1;
+    Object.entries(serviceMemScoreMap).forEach(([service, data]) => {
+      if (data.score > maxMemScore) {
+        maxMemScore = data.score;
+        memRootCauseService = service;
       }
     });
 
@@ -194,17 +258,17 @@ export const getIncidentRCA = async (req, res, next) => {
     if (incident.type === 'CPU') {
       title = 'High CPU Utilization Threshold Exceeded';
       severity = maxCpu > 90 ? 'CRITICAL' : 'HIGH';
-      affectedService = 'Compute Cluster / CPU Subsystem';
+      affectedService = cpuRootCauseService || 'Compute Cluster / CPU Subsystem';
       relatedEndpoint = 'N/A';
     } else if (incident.type === 'MEMORY') {
       title = 'Memory Resource Consumption Spike';
       severity = 'CRITICAL';
-      affectedService = 'Memory Manager / Buffer Pool';
+      affectedService = memRootCauseService || 'Memory Manager / Buffer Pool';
       relatedEndpoint = 'N/A';
     } else if (incident.type === 'LOG') {
       title = 'Critical Application Error & Exception Spike';
       severity = 'CRITICAL';
-      affectedService = 'Backend Express Router';
+      affectedService = rootCauseService || 'Backend Express Router';
       relatedEndpoint = '/api/v1/telemetry';
     }
 
@@ -272,7 +336,7 @@ export const getIncidentRCA = async (req, res, next) => {
     } else if (incident.type === 'MEMORY') {
       rootCauseExplanation = `Incident was triggered by high memory allocation (${incident.trigger_reason}). System memory peaked at ${maxMem} MB with average allocation of ${avgMem} MB over ${formatDuration(durationSeconds)}.`;
     } else {
-      rootCauseExplanation = `Incident was triggered by an application error spike (${incident.trigger_reason}). A total of ${errorCount} error logs were recorded. Most frequent error: "${mostFrequentError?.message || 'N/A'}" (${mostFrequentError?.count || 0} occurrences).`;
+      rootCauseExplanation = `${incident.trigger_reason}. A total of ${errorCount} error logs were recorded. Most frequent error: "${mostFrequentError?.message || 'N/A'}" (${mostFrequentError?.count || 0} occurrences).`;
     }
 
     const rcaResponse = {

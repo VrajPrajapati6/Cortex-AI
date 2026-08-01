@@ -169,7 +169,7 @@ export default function App() {
       <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-6 flex gap-6">
         
         {/* Sidebar: Incidents */}
-        <div className="w-80 flex-shrink-0 hidden md:block">
+        <div className="w-80 flex-shrink-0 hidden md:block sticky top-6 h-[calc(100vh-120px)]">
           <IncidentsList 
             incidents={incidents} 
             selectedIncidentId={selectedIncidentId}
