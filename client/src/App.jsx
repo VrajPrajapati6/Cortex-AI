@@ -21,6 +21,8 @@ export default function App() {
 
   // Filters & Pagination State
   const [selectedLevel, setSelectedLevel] = useState('ALL');
+  const [selectedService, setSelectedService] = useState('ALL');
+  const [selectedEventType, setSelectedEventType] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -64,7 +66,7 @@ export default function App() {
           setMetrics(metricsData.data.metrics || []);
         }
 
-        // Fetch global logs
+        // Fetch global logs with enriched metadata filters
         const offset = (page - 1) * limit;
         const queryParams = new URLSearchParams({
           limit: limit.toString(),
@@ -72,6 +74,8 @@ export default function App() {
         });
 
         if (selectedLevel && selectedLevel !== 'ALL') queryParams.append('level', selectedLevel);
+        if (selectedService && selectedService !== 'ALL') queryParams.append('service_name', selectedService);
+        if (selectedEventType && selectedEventType !== 'ALL') queryParams.append('event_type', selectedEventType);
         if (searchTerm.trim()) queryParams.append('search', searchTerm.trim());
 
         const logsRes = await fetch(`http://localhost:5000/api/logs?${queryParams.toString()}`);
@@ -86,7 +90,7 @@ export default function App() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedLevel, searchTerm, page, limit, selectedIncidentId]);
+  }, [selectedLevel, selectedService, selectedEventType, searchTerm, page, limit, selectedIncidentId]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -97,7 +101,11 @@ export default function App() {
   useEffect(() => {
     const handleNewLog = (newLog) => {
       if (!selectedIncidentId && page === 1) {
-        if (selectedLevel === 'ALL' || newLog.level === selectedLevel) {
+        const matchesLevel = selectedLevel === 'ALL' || newLog.level === selectedLevel;
+        const matchesService = selectedService === 'ALL' || newLog.service_name === selectedService;
+        const matchesType = selectedEventType === 'ALL' || newLog.event_type === selectedEventType;
+
+        if (matchesLevel && matchesService && matchesType) {
           setLogs(prev => [newLog, ...prev].slice(0, limit));
         }
       }
@@ -112,7 +120,7 @@ export default function App() {
           errorRate: newTotalLogs > 0 ? Math.round((newErrorCount / newTotalLogs) * 100) : 0,
           logLevelBreakdown: {
             ...prev.logLevelBreakdown,
-            [newLog.level.toLowerCase()]: (prev.logLevelBreakdown?.[newLog.level.toLowerCase()] || 0) + 1
+            [(newLog.level || '').toLowerCase()]: (prev.logLevelBreakdown?.[(newLog.level || '').toLowerCase()] || 0) + 1
           }
         };
       });
@@ -147,7 +155,7 @@ export default function App() {
       socket.off('new_metrics', handleNewMetrics);
       socket.off('incident_update', handleIncidentUpdate);
     };
-  }, [selectedIncidentId, page, limit, selectedLevel, fetchDashboardData]);
+  }, [selectedIncidentId, page, limit, selectedLevel, selectedService, selectedEventType, fetchDashboardData]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
@@ -195,6 +203,10 @@ export default function App() {
                   pagination={pagination}
                   selectedLevel={selectedLevel}
                   setSelectedLevel={setSelectedLevel}
+                  selectedService={selectedService}
+                  setSelectedService={setSelectedService}
+                  selectedEventType={selectedEventType}
+                  setSelectedEventType={setSelectedEventType}
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
                   page={page}

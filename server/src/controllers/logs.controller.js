@@ -4,7 +4,7 @@ import { ApiError } from '../utils/apiError.js';
 
 export const getLogs = async (req, res, next) => {
   try {
-    const { level, search, limit = 50, offset = 0 } = req.query;
+    const { level, service_name, request_id, event_type, search, limit = 50, offset = 0 } = req.query;
 
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
     const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
@@ -17,9 +17,24 @@ export const getLogs = async (req, res, next) => {
       conditions.push(`level = $${values.length}`);
     }
 
+    if (service_name && service_name.trim() !== '' && service_name.toUpperCase() !== 'ALL') {
+      values.push(service_name.trim());
+      conditions.push(`service_name = $${values.length}`);
+    }
+
+    if (request_id && request_id.trim() !== '') {
+      values.push(request_id.trim());
+      conditions.push(`request_id = $${values.length}`);
+    }
+
+    if (event_type && event_type.trim() !== '' && event_type.toUpperCase() !== 'ALL') {
+      values.push(event_type.trim());
+      conditions.push(`event_type = $${values.length}`);
+    }
+
     if (search && search.trim() !== '') {
       values.push(`%${search.trim()}%`);
-      conditions.push(`message ILIKE $${values.length}`);
+      conditions.push(`(message ILIKE $${values.length} OR request_id ILIKE $${values.length} OR service_name ILIKE $${values.length})`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -29,7 +44,17 @@ export const getLogs = async (req, res, next) => {
     const totalLogs = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT id, timestamp, level, message
+      SELECT 
+        id, 
+        service_name, 
+        request_id, 
+        event_type, 
+        level, 
+        message, 
+        endpoint, 
+        status_code, 
+        response_time_ms, 
+        timestamp
       FROM logs
       ${whereClause}
       ORDER BY timestamp DESC
