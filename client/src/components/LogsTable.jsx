@@ -121,27 +121,27 @@ export const LogsTable = ({
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full overflow-hidden">
       
       {/* Header & Filter Controls */}
-      <div className="p-4 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gray-50">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wider">
+      <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gray-50 max-w-full">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
             {isIncidentView ? 'Incident Log Trail (±1 Min Window)' : 'Microservice Logs Explorer'}
           </h2>
-          <span className="text-xs font-mono text-gray-500">
+          <span className="text-xs font-mono text-gray-500 font-medium whitespace-nowrap">
             ({isIncidentView ? displayedLogs.length : (pagination.total || logs.length)} records)
           </span>
         </div>
 
-        {/* Filter Controls (Supported in both Global and Incident views) */}
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* Filter Controls */}
+        <div className="flex items-center gap-2 flex-wrap max-w-full">
           
           {/* Log Level Filter */}
-          <div className="flex bg-white rounded-md border border-gray-300 overflow-hidden text-xs">
+          <div className="flex bg-white rounded-md border border-gray-300 overflow-hidden text-xs shadow-xs flex-wrap sm:flex-nowrap">
             {levels.map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => { setCurrentLevel && setCurrentLevel(lvl); setPage && setPage(1); }}
-                className={`px-2.5 py-1.5 font-medium transition-colors ${
-                  currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-50'
+                className={`px-2.5 py-1.5 font-semibold transition-colors ${
+                  currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'
                 } ${lvl !== 'ALL' ? 'border-l border-gray-200' : ''}`}
               >
                 {lvl}
@@ -153,7 +153,7 @@ export const LogsTable = ({
           <select
             value={currentService}
             onChange={(e) => { setCurrentService && setCurrentService(e.target.value); setPage && setPage(1); }}
-            className="px-2.5 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer max-w-[150px] truncate"
           >
             {servicesList.map(s => (
               <option key={s} value={s}>{s === 'ALL' ? 'All Services' : s}</option>
@@ -164,7 +164,7 @@ export const LogsTable = ({
           <select
             value={currentEventType}
             onChange={(e) => { setCurrentEventType && setCurrentEventType(e.target.value); setPage && setPage(1); }}
-            className="px-2.5 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer max-w-[150px] truncate"
           >
             {eventTypesList.map(et => (
               <option key={et} value={et}>{et === 'ALL' ? 'All Event Types' : et}</option>
@@ -177,7 +177,7 @@ export const LogsTable = ({
             placeholder="Search logs / Request ID..."
             value={currentSearch}
             onChange={(e) => { setCurrentSearch && setCurrentSearch(e.target.value); setPage && setPage(1); }}
-            className="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 w-44 font-mono"
+            className="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px] max-w-[200px] flex-1 font-mono shadow-xs"
           />
         </div>
       </div>
