@@ -7,6 +7,8 @@ import { LogsTable } from './components/LogsTable';
 import { IncidentsList } from './components/IncidentsList';
 import { IncidentRcaModal } from './components/IncidentRcaModal';
 import ServiceHealthMap from './components/ServiceHealthMap';
+import TopologyGraph from './components/TopologyGraph';
+import TopologyGraph from './components/TopologyGraph';
 
 const socket = io('http://localhost:5000');
 

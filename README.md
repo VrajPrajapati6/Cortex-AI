@@ -68,6 +68,12 @@ Cortex proactively monitors system degradation before incidents even occur using
   - **Degraded (Yellow):** `error_rate >= 1%` OR `p95_latency > 2× baseline`
   - **Critical (Red):** `error_rate > 5%` OR `p95_latency > 5× baseline`
 
+### Service Dependency Topology Graph
+The dashboard includes an interactive, live-updating **SVG Topology Graph** that maps the backend architecture:
+- **Node Color:** Dynamically maps to the active Health Status (Green, Yellow, Red).
+- **Edge Highlighting:** Standard dependencies are gray, but if the Causal Engine detects **active failure propagation** between services in the last 60 seconds, the edge glows red.
+- **Propagation Volume:** The thickness of the red edge scales dynamically with the frequency of propagating errors, providing instant visual identification of the blast radius.
+
 ---
 
 ## 🔍 Root Cause Analysis (RCA) Module

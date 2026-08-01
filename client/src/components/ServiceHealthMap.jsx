@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const ServiceHealthMap = () => {
   const [services, setServices] = useState([]);
@@ -8,8 +7,10 @@ const ServiceHealthMap = () => {
 
   const fetchHealth = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/health/services');
-      setServices(response.data);
+      const response = await fetch('http://localhost:5000/api/health/services');
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      setServices(data);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching service health:', err);
