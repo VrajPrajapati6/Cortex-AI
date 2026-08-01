@@ -47,7 +47,7 @@ Queries all operational data recorded within a strict time window spanning exact
 
 ### 2. Dynamic Root Cause Identification (Resource Strain Scoring)
 Cortex dynamically determines the offending microservice (Root Cause) by scoring all telemetry logs in the 60-second window:
-- **LOG Incidents:** Scores services based on sheer error volume (`score = error_count * 10`). Ties are broken chronologically by earliest failure.
+- **LOG Incidents:** Calculates the dominant failing service (Primary Impacted Service) based on error volume. Then, it traces the `request_id` of the triggering log to find the *first* error in the request chain. If an upstream service (e.g. Database/Cache) failed chronologically before the dominant service, it is declared the **Upstream Root Cause**.
 - **CPU Incidents:** Identifies compute-bound services by calculating a base volume score plus a latency penalty (`response_time_ms / 100`).
 - **MEMORY Incidents:** Identifies data-bound services by calculating a base volume score plus a massive +5 penalty for heavy data operations (e.g., `DATABASE_QUERY`, `CACHE_MISS`, `EXTERNAL_API`).
 

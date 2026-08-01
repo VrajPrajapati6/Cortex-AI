@@ -253,23 +253,62 @@ export const getIncidentRCA = async (req, res, next) => {
     let title = `${incident.type} System Exception`;
     let severity = 'MEDIUM';
     let affectedService = 'Backend Service';
+    let primaryImpactedService = 'Backend Service';
     let relatedEndpoint = '/api/v1/service';
 
     if (incident.type === 'CPU') {
       title = 'High CPU Utilization Threshold Exceeded';
       severity = maxCpu > 90 ? 'CRITICAL' : 'HIGH';
       affectedService = cpuRootCauseService || 'Compute Cluster / CPU Subsystem';
+      primaryImpactedService = affectedService;
       relatedEndpoint = 'N/A';
     } else if (incident.type === 'MEMORY') {
       title = 'Memory Resource Consumption Spike';
       severity = 'CRITICAL';
       affectedService = memRootCauseService || 'Memory Manager / Buffer Pool';
+      primaryImpactedService = affectedService;
       relatedEndpoint = 'N/A';
     } else if (incident.type === 'LOG') {
       title = 'Critical Application Error & Exception Spike';
       severity = 'CRITICAL';
-      affectedService = rootCauseService || 'Backend Express Router';
       relatedEndpoint = '/api/v1/telemetry';
+
+      const dominantService = rootCauseService || 'Backend Express Router';
+      primaryImpactedService = dominantService;
+
+      // Upstream Root Cause Correlation
+      let upstreamService = null;
+      let triggeringLog = null;
+      for (let i = logs.length - 1; i >= 0; i--) {
+        if (logs[i].level === 'ERROR' && incident.trigger_reason.includes(logs[i].message)) {
+          triggeringLog = logs[i];
+          break;
+        }
+      }
+
+      if (triggeringLog && triggeringLog.request_id) {
+        let firstUpstreamErrorLog = null;
+        for (const log of logs) {
+          if (log.level === 'ERROR' && log.request_id === triggeringLog.request_id) {
+            firstUpstreamErrorLog = log;
+            break;
+          }
+        }
+
+        if (firstUpstreamErrorLog && firstUpstreamErrorLog.service_name !== dominantService) {
+           const upstreamTime = new Date(firstUpstreamErrorLog.timestamp).getTime();
+           const primaryTime = topServiceFirstErrorTime ? new Date(topServiceFirstErrorTime).getTime() : Date.now();
+           if (upstreamTime < primaryTime) {
+              upstreamService = firstUpstreamErrorLog.service_name;
+           }
+        }
+      }
+
+      if (upstreamService) {
+        affectedService = `${upstreamService} (upstream)`;
+      } else {
+        affectedService = dominantService;
+      }
     }
 
     // 5. Reconstruct Chronological Incident Timeline
@@ -353,6 +392,7 @@ export const getIncidentRCA = async (req, res, next) => {
         triggerReason: incident.trigger_reason,
         resolutionReason: incident.resolution_reason,
         affectedService,
+        primaryImpactedService,
         relatedEndpoint
       },
       logSummary: {

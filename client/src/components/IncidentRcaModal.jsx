@@ -100,8 +100,13 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [] 
                   {incident?.severity} Severity
                 </span>
                 <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 font-mono">
-                  {incident?.affectedService}
+                  Root Cause: {incident?.affectedService}
                 </span>
+                {incident?.primaryImpactedService && incident?.primaryImpactedService !== incident?.affectedService && (
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 font-mono">
+                    Impacted: {incident?.primaryImpactedService}
+                  </span>
+                )}
                 <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 font-mono">
                   Duration: {incident?.duration}
                 </span>
