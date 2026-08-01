@@ -8,7 +8,7 @@ export const SummaryCards = ({ summary }) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      
+
       <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-sm">
         <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Total Logs</div>
         <div className="text-3xl font-bold text-gray-900">{totalLogs.toLocaleString()}</div>
@@ -18,7 +18,7 @@ export const SummaryCards = ({ summary }) => {
         <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">CPU Load</div>
         <div className="text-3xl font-bold text-gray-900">{cpuUsage}%</div>
         <div className="w-full bg-gray-100 rounded-full h-2 mt-4 overflow-hidden">
-          <div 
+          <div
             className={`h-2 rounded-full ${cpuUsage > 80 ? 'bg-red-500' : cpuUsage > 50 ? 'bg-yellow-400' : 'bg-green-500'}`}
             style={{ width: `${Math.min(cpuUsage, 100)}%` }}
           />
