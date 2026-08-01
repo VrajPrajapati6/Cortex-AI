@@ -221,6 +221,9 @@ Server (Node.js Backend)
 
 ---
 
+## Start to explore the ML part. 
+- created a structure for ML part.
+
 ## 11. Complete Setup & Installation Guide
 
 Running Cortex on your local machine is incredibly straightforward. You only need Node.js and a Neon database.
