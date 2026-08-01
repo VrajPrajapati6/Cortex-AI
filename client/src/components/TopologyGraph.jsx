@@ -52,11 +52,11 @@ export const TopologyGraph = () => {
     <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white tracking-wide">Live Service Dependency Graph</h2>
-        <div className="flex items-center space-x-4 text-xs text-gray-400">
-          <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span> Healthy</div>
-          <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-1"></span> Degraded</div>
-          <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-rose-500 mr-1"></span> Critical</div>
-          <div className="flex items-center"><span className="w-4 h-1 rounded-full bg-rose-500 mr-1"></span> Active Failure Edge</div>
+        <div className="flex items-center space-x-4 text-xs">
+          <div className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-500/50"></span> <span className="text-gray-200 font-medium">Healthy</span></div>
+          <div className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2 shadow-sm shadow-amber-500/50"></span> <span className="text-gray-200 font-medium">Degraded</span></div>
+          <div className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-2 shadow-sm shadow-rose-500/50"></span> <span className="text-gray-200 font-medium">Critical</span></div>
+          <div className="flex items-center"><span className="w-4 h-1 rounded-full bg-rose-500 mr-2 shadow-sm shadow-rose-500/50"></span> <span className="text-gray-200 font-medium">Active Failure Edge</span></div>
         </div>
       </div>
 
