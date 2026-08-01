@@ -221,8 +221,52 @@ Server (Node.js Backend)
 
 ---
 
-## Start to explore the ML part. 
-- created a structure for ML part.
+## Machine Learning Roadmap
+
+The Machine Learning module will be developed incrementally as Cortex evolves. Its primary goal is to analyze historical telemetry data and provide intelligent insights beyond deterministic rule-based monitoring.
+
+### Planned Pipeline
+
+```
+PostgreSQL
+    │
+    ▼
+Dataset Generation
+    │
+    ▼
+Data Preprocessing
+    │
+    ▼
+Feature Engineering
+    │
+    ▼
+Model Training
+    │
+    ▼
+Inference
+    │
+    ▼
+Prediction & Insights
+```
+
+### Planned Features
+
+- Anomaly Detection
+- Failure Prediction
+- Resource Usage Forecasting
+- Historical Trend Analysis
+- AI-assisted Operational Insights
+
+### Data Sources
+
+The ML module will use historical telemetry collected by Cortex, including:
+
+- Application Logs
+- System Metrics (CPU & Memory)
+- Incident History
+- Root Cause Analysis Results
+
+These datasets will later be exported from PostgreSQL, preprocessed, and used for training machine learning models.
 
 ## 11. Complete Setup & Installation Guide
 
