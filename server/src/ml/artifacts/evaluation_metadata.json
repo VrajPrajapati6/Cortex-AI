@@ -1,0 +1,38 @@
+{
+  "model_name": "Baseline XGBoost Incident Predictor",
+  "phase": "2A.2 Evaluation",
+  "dataset_used": "server/src/ml/datasets/processed/test_dataset.csv",
+  "test_samples_count": 40000,
+  "evaluation_timestamp": "2026-08-02T16:56:37.870633",
+  "accuracy_pct": 99.93,
+  "macro_f1_score": 0.9977,
+  "weighted_f1_score": 0.9993,
+  "balanced_accuracy_pct": 99.79,
+  "log_loss": 0.0015,
+  "mcc": 0.9989,
+  "cohen_kappa": 0.9989,
+  "average_prediction_confidence_pct": 99.94,
+  "total_misclassified_samples": 28,
+  "overall_error_rate_pct": 0.07,
+  "best_predicted_class": "NONE",
+  "worst_predicted_class": "MEMORY",
+  "engineering_summary": "Model achieves best prediction accuracy on 'NONE' (100.0%) and lowest accuracy on 'MEMORY' (99.43%). Total misclassifications: 28 / 40,000 samples (0.07% error rate). The model most frequently confuses 'MEMORY' incidents as 'CPU' (11 samples).",
+  "confidence_distribution_bins": {
+    "90_100_pct": {
+      "count": 39924,
+      "percentage": 99.81
+    },
+    "80_90_pct": {
+      "count": 30,
+      "percentage": 0.07
+    },
+    "70_80_pct": {
+      "count": 19,
+      "percentage": 0.05
+    },
+    "below_70_pct": {
+      "count": 27,
+      "percentage": 0.07
+    }
+  }
+}
