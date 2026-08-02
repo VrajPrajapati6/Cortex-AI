@@ -1,12 +1,12 @@
 # Cortex — Distributed Observability & Root Cause Analysis Platform
 
-Welcome to **Cortex**! This document serves as the ultimate, exhaustive guide to the entire platform. Whether you are a newcomer to the repository, a developer looking to contribute, or a senior engineer reviewing the architectural decisions, this guide leaves no stone unturned. It explains every single component, algorithm, database table, mathematical scoring system, and feature we have built—all in plain, easy-to-understand English.
+Welcome to **Cortex**! This document serves as the ultimate, exhaustive guide to the entire platform. Whether you are a newcomer to the repository, a developer looking to contribute, or a senior engineer reviewing the architectural decisions, this guide leaves no stone unturned. It explains every single component, algorithm, database table, mathematical scoring system, workflow, scenario, and telemetry specification—all in plain, easy-to-understand English.
 
 ---
 
 ## 1. The Core Problem: Why Does Cortex Exist?
 
-In modern software engineering, monolithic applications are often broken down into dozens (or hundreds) of smaller pieces called **Microservices** (for example: a User Service, an Order Service, a Payment Service, a Notification Service, and a Database). 
+In modern software engineering, monolithic applications are often broken down into dozens (or hundreds) of smaller pieces called **Microservices** (for example: a User Service, an Order Service, a Payment Service, an Authentication Service, a Redis cache, and a PostgreSQL database). 
 
 While microservices make it much easier for large teams of developers to build and deploy software independently, they make it incredibly difficult to debug problems when things go wrong in production.
 
@@ -19,9 +19,9 @@ Consider this scenario: A user tries to place an order, but the website shows an
 If you are an on-call engineer, your dashboard just lit up with hundreds of red errors across four different services. Was the Order Service actually broken? Or did it fail because the Payment Service timed out? And did the Payment Service time out because the Database was too slow? 
 
 **Cortex** is a complete, production-inspired Observability Platform built from scratch to solve this exact problem. Cortex does three main things autonomously:
-1. Continuously Monitors your entire distributed system (Logs, CPU load, and Memory footprint).
-2. Automatically Detects Anomalies and triggers "Incidents" when thresholds are breached.
-3. Performs Root Cause Analysis (RCA) deterministically. It uses graph traversal and evidence scoring to trace the failure through the maze of microservices, pinpoint the exact service that started the fire, and explain exactly why it made that conclusion with a confidence score and concrete evidence.
+1. **Continuously Monitors** your entire distributed system (Logs, CPU load, Memory footprint, and P95/P99 latency baselines).
+2. **Automatically Detects Anomalies** and triggers "Incidents" when hardware or error thresholds are breached.
+3. **Performs Root Cause Analysis (RCA)** deterministically. It uses graph traversal and evidence scoring to trace the failure through the maze of microservices, pinpoint the exact service that started the fire, and explain exactly why it made that conclusion with a confidence score and concrete evidence.
 
 ---
 
@@ -31,241 +31,289 @@ Cortex is built using a modern, decoupled Monorepo architecture (where both the 
 
 ### The Frontend (client/ folder)
 The visual dashboard that engineers use to monitor the system in real-time.
-- React.js & Vite: We use React for building a modular user interface, and Vite as the build tool to compile it blazingly fast.
-- Tailwind CSS: Used for all styling. It allows us to build beautiful, responsive, enterprise-grade dark-mode interfaces incredibly quickly without writing raw CSS files.
-- Socket.io-Client: This allows the frontend to maintain a persistent, bidirectional WebSocket connection with the backend. Graphs, tables, and incident alerts update instantly without you ever needing to refresh the page.
-- Recharts: A charting library used to render the live CPU and Memory usage line graphs.
-- Lucide React: Provides the clean, beautiful SVG icons used throughout the dashboard.
+- **React.js & Vite**: Modular user interface built with React, compiled at lightning speed with Vite.
+- **Tailwind CSS**: Utility-first styling framework used for responsive, enterprise-grade dark-mode dashboard interfaces.
+- **Socket.io-Client**: Maintains a persistent, bidirectional WebSocket connection with the backend. Graphs, tables, topology maps, and incident alerts update instantly without manual page refreshes.
+- **Recharts**: High-performance charting library used to render live CPU and Memory utilization area graphs.
+- **Lucide React**: Vector icons used throughout the metrics cards and diagnostic panels.
 
 ### The Backend (server/ folder)
-The heavy-lifting engine that processes data, runs background workers, and executes the complex RCA algorithms.
-- Node.js & Express.js: The core server technology used to build our RESTful API endpoints.
-- Neon PostgreSQL: A serverless, modern PostgreSQL database. This is where all data is permanently stored. We use the pg library to write raw, highly optimized SQL queries (using CTEs, subqueries, and precise aggregations).
-- Socket.io: The server-side WebSocket implementation that broadcasts live telemetry data directly to the frontend dashboard.
-- Crypto & OS Modules: Native Node.js modules used for generating unique cryptographic IDs and reading the actual physical server hardware statistics (like real-time CPU and Memory load).
+The processing engine that ingests data, runs background telemetry workers, manages auto-initialization, executes the Scenario Engine, and computes RCA algorithms.
+- **Node.js & Express.js**: RESTful API server handling telemetry queries, incident management, and trace fetching.
+- **Neon PostgreSQL**: Serverless relational PostgreSQL database storing logs, system metrics, service performance baselines, and incidents. Uses the native `pg` library for optimized raw SQL queries.
+- **Unified Scenario Engine (`server/src/scenario/`)**: Drives synthetic telemetry generation across microservices, request trace trees, workload volume scaling, and CPU/Memory metrics in cause-and-effect unison.
+- **Auto DB Schema Initializer (`initDb.js`)**: Executes `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ADD COLUMN IF NOT EXISTS` for all 4 tables on server boot, ensuring zero manual setup for developers.
+- **Socket.io**: Server-side WebSocket protocol broadcasting live telemetry logs and hardware metrics directly to the dashboard.
 
 ---
 
-## 3. The Database Schema (In-Depth)
+## 3. Microservices & Infrastructure Inventory
 
-To make all these advanced features work, Cortex relies on four highly structured relational database tables.
+Cortex models a real-world enterprise e-commerce backend topology consisting of **5 core microservices** and **2 storage engines**:
 
-### A. The logs Table
-This is the most massive table in the database. It stores every single event that happens across all microservices in real-time.
-- id: A standard UUID primary key.
-- request_id: A unique ID assigned to a single user's action (e.g., placing an order). All logs generated by different services during this action will share this same ID so we can group them together later.
-- span_id: A unique ID for the specific step in the process (e.g., the exact moment the Payment Service was invoked).
-- parent_span_id: If the Order Service calls the Payment Service, the Payment Service's log will record the Order Service's span_id here. This is how we build hierarchical trees of execution.
-- service_name: The name of the microservice (e.g., 'Payment Service', 'Redis').
-- event_type: The category of the event (e.g., API_REQUEST, DATABASE_QUERY, EXTERNAL_API).
-- endpoint: The API route or function hit (e.g., /api/v1/payments/charge).
-- status_code: The HTTP status code (e.g., 200 for success, 500 for internal server error).
-- response_time_ms: Exactly how many milliseconds the function took to run.
-- level: The severity of the log (INFO, WARN, ERROR, DEBUG).
-- message: The human-readable text explaining what happened.
-- timestamp: The exact millisecond the log was recorded.
-
-### B. The system_metrics Table
-This table stores snapshots of the physical server's hardware resources.
-- id: Primary key.
-- cpu_usage: The percentage of the CPU currently being used (0 to 100).
-- memory_usage_mb: The exact amount of RAM currently being used in Megabytes.
-- timestamp: Exactly when this snapshot was taken.
-
-### C. The service_metrics Table
-This table stores the historical "Baseline" (normal) performance of every service. We aggregate data and store it here to avoid querying massive log tables repeatedly.
-- id: Primary key.
-- service_name: The specific microservice.
-- request_count: How many times the service was called in the aggregation window.
-- error_rate: The percentage of those requests that failed.
-- avg_latency: The average speed of the service.
-- p95_latency: The "95th Percentile" latency. This means 95% of all requests finished faster than this number. This is the gold standard for measuring speed in software engineering because it ignores extreme outliers.
-- p99_latency: The 99th percentile latency.
-- timestamp: The time of aggregation.
-
-### D. The incidents Table
-This tracks the lifecycle of system outages.
-- id: A UUID.
-- type: What kind of incident it is (LOG, CPU, MEMORY).
-- status: Current state (ACTIVE or RESOLVED).
-- trigger_reason: Text explaining exactly why Cortex opened the incident (e.g., "High CPU Usage: 85%").
-- resolution_reason: Text explaining exactly why Cortex closed it.
-- created_at & resolved_at: Timestamps tracking the precise duration of the outage.
+| Service Name | Category | Primary Function | Upstream Dependencies | Downstream Dependencies |
+| :--- | :--- | :--- | :--- | :--- |
+| **`User Service`** | Gateway API | Public entry point for user sessions, search, and checkout. | *None (Client)* | `Order Service`, `Search Service`, `Authentication Service` |
+| **`Order Service`** | Domain API | Handles shopping cart state, discount matrix, and order placement. | `User Service` | `Payment Service`, `Inventory Service`, `PostgreSQL` |
+| **`Payment Service`** | Financial API | Charges payment methods, calls external gateways, commits ledger records. | `Order Service` | `Redis`, `PostgreSQL` |
+| **`Search Service`** | Discovery API | Catalog queries, product search, and cache lookups. | `User Service` | `Redis`, `Product Service` |
+| **`Authentication Service`** | Identity API | User login, JWT token verification, and session signing. | `User Service` | `Redis` |
+| **`Redis`** | Cache Engine | In-memory key-value cache cluster for product lookups and tokens. | `Search Service`, `Authentication Service`, `Payment Service` | *None* |
+| **`PostgreSQL`** | Relational DB | Relational storage for orders, user ledgers, and metrics history. | `Order Service`, `Payment Service` | *None* |
 
 ---
 
-## 4. Background Telemetry Workers (Data Generation)
+## 4. Phase 1 — Unified Scenario Telemetry Generation Engine
 
-Because Cortex is a monitoring platform, it needs constant data to monitor. To allow developers to test the platform locally without connecting it to a massive production cluster, we built three background scripts (called "Workers") that run constantly in a loop on the backend server to simulate a massive, live production environment.
+Telemetry in Cortex is driven by a single source of truth: the **Scenario Engine** (`server/src/scenario/`). Rather than sampling local PC hardware independently, every generated telemetry window represents one coherent production system state where logs, CPU load, RAM footprint, latencies, and status codes move in cause-and-effect harmony.
 
-### 1. The Log Generator (logGenerator.js)
-- Interval: Runs every 10 seconds.
-- Purpose: Generates fake, mathematically accurate user traffic. 
-- How it works: It randomly selects a scenario (like a successful checkout, a database crash, or a payment timeout). It mathematically simulates the exact flow of data. It generates unique Request IDs (appending random hex hashes to prevent collisions across server restarts), assigns parent_span_ids, and mathematically staggers the start times of the logs so that child functions always start after their parent functions. It dynamically calculates the parent's total response time so that it fully encompasses the execution duration of all its children, creating a mathematically perfect waterfall simulation.
+### The 2-Step Selection Hierarchy
 
-### 2. The Metrics Collector (metricsCollector.js)
-- Interval: Runs every 10 seconds.
-- Purpose: Samples hardware utilization.
-- How it works: It uses the native Node.js os module to read your computer's actual physical CPU ticks (calculating the idle vs total differential) and RAM usage (calculating free vs total memory). It saves this data to the system_metrics table and immediately broadcasts it via WebSockets to the frontend.
+$$\text{System} \longrightarrow \text{Step 1: Select Workflow} \longrightarrow \text{Step 2: Select Owned Scenario} \longrightarrow \text{Request Volume} \longrightarrow \text{Sequential Logs} \longrightarrow \text{Workload Metrics}$$
 
-### 3. The Latency Aggregator (latencyAggregator.js)
-- Interval: Runs every 60 seconds.
-- Purpose: Establishes performance baselines.
-- How it works: It looks at all the raw logs generated in the last minute, groups them by service, sorts their response times from fastest to slowest, and mathematically calculates the exact P95 and P99 latencies. It saves this aggregated data to the service_metrics table so Cortex knows what "normal" speed looks like for the RCA engine.
+1. **Step 1 — Select a Business Workflow**: The engine randomly selects a business operation (e.g. `Place Order & Checkout`).
+2. **Step 2 — Select an Owned Scenario**: The engine selects a scenario owned *strictly* by that workflow (e.g. `Payment Gateway Timeout`).
+3. **Step 3 — Request Volume Scaling**: Calculates incoming user traffic volume (e.g. 142 Users). Higher traffic volume scales target CPU % and Memory MB workload footprint.
+4. **Step 4 — Sequential Request Execution**: Executes each request through trace chains (`User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service`).
+5. **Step 5 — Exponential Moving Average (EMA) Smoothing**: CPU and Memory metrics adjust smoothly across ticks ($\text{smoothCpu} = 0.4 \times \text{targetCpu} + 0.6 \times \text{prevCpu}$), creating organic, realistic trend lines.
 
 ---
 
-## 5. The Automated Incident Engine
+## 5. Complete Workflow & Scenario Matrix
 
-Cortex is entirely autonomous. It does not wait for a human to push a button. It constantly watches the data generated by the workers and automatically manages the lifecycle of incidents:
+Below is the exhaustive telemetry matrix detailing all **5 Business Workflows** and their **11 Scenarios**:
 
-- Creating LOG Incidents: If any service outputs a log with the level ERROR, Cortex immediately triggers a LOG incident. It auto-resolves this incident when it sees the service start outputting healthy INFO logs again.
-- Creating CPU Incidents: If the physical CPU load crosses 80%, a CPU incident is created. It auto-resolves when the CPU cools down to below 50%.
-- Creating MEMORY Incidents: If RAM usage exceeds 90% of total capacity, an incident triggers. It resolves when RAM drops below 70%.
-
-Whenever an incident triggers, it is saved to the database, and the frontend dashboard turns red and sounds the alarm via the WebSocket connection.
-
----
-
-## 6. Live Service Topology & Health Map
-
-The main dashboard features a comprehensive visual map of your entire system.
-
-### A. The Dynamic Health System (SLOs)
-Every service on the dashboard has a colored dot representing its health. This is calculated dynamically using a rolling 15-minute average of its normal speed:
-- Green (Healthy): The error rate is less than 1%, and the service's speed is normal (less than 2x baseline).
-- Yellow (Degraded): The error rate has reached 1%, OR the service is taking more than twice as long as it normally does.
-- Red (Critical): The error rate is over 5%, OR the service is taking five times as long as it normally does.
-
-### B. The Topology Dependency Graph
-This section draws a highly customized SVG (Scalable Vector Graphics) map showing how the services connect to each other.
-- Normally, the lines connecting the services are static and gray.
-- Active Failure Edges: If Cortex's backend algorithms detect that an error is actively spreading from one service to another in the last 60 seconds (for example, the Database crashed, which caused the Payment Service to throw an error, which caused the Order Service to fail), the line connecting them will glow Bright Red and pulse! The thickness of the line increases based on how many errors are spreading across that specific edge, visually highlighting the "blast radius" of the outage.
+| Workflow | Scenario Name | Type | Root Cause Service | CPU % Range | Memory MB Range | Latency Range | Failure Rate | Traffic Vol. (Users) | Sequential Log Sequence & Status Codes |
+| :--- | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **`ORDER_PLACEMENT`**<br>*(Place Order & Checkout)* | **`HEALTHY_CHECKOUT`** | 🟢 `HEALTHY` | *None* | $18\% - 32\%$ | $3800 - 5200\text{MB}$ | $15 - 45\text{ms}$ | $0\%$ | $120 - 200$ | `User Service` (200) $\rightarrow$ `Order Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `Notification Service` (200) |
+| **`ORDER_PLACEMENT`** | **`CPU_RUNAWAY_SPIKE`** | 🟡 `DEGRADED` | `Order Service` | $82\% - 95\%$ | $4800 - 5800\text{MB}$ | $1200 - 2400\text{ms}$ | $15\%$ | $140 - 220$ | `User Service` (200) $\rightarrow$ `Order Service` (WARN: Discount matrix high CPU) $\rightarrow$ `Payment Service` (200) |
+| **`ORDER_PLACEMENT`** | **`INVENTORY_HOLD_FAILURE`** | 🔴 `FAILURE` | `Order Service` | $35\% - 55\%$ | $4200 - 5400\text{MB}$ | $450 - 950\text{ms}$ | $20\%$ | $110 - 170$ | `User Service` (200) $\rightarrow$ `Order Service` (WARN: Low stock) $\rightarrow$ `Order Service` (ERROR 400: Stock SKU-9921 exhausted) |
+| **`PAYMENT_PROCESSING`**<br>*(Payment Processing)* | **`PAYMENT_SUCCESS`** | 🟢 `HEALTHY` | *None* | $20\% - 35\%$ | $4000 - 5400\text{MB}$ | $25 - 65\text{ms}$ | $0\%$ | $130 - 210$ | `User Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `PostgreSQL` (200) |
+| **`PAYMENT_PROCESSING`** | **`PAYMENT_GATEWAY_TIMEOUT`** | 🔴 `FAILURE` | `Payment Service` | $72\% - 88\%$ | $6400 - 7800\text{MB}$ | $2500 - 4800\text{ms}$ | $25\%$ | $100 - 180$ | `User Service` (200) $\rightarrow$ `Order Service` (200) $\rightarrow$ `Payment Service` (WARN: Latency > 3000ms) $\rightarrow$ `Payment Service` (ERROR 504 Timeout) $\rightarrow$ `Order Service` (ERROR 400 Rollback) |
+| **`PAYMENT_PROCESSING`** | **`GATEWAY_CONNECTION_REFUSED`** | 🔴 `FAILURE` | `Payment Service` | $60\% - 75\%$ | $5800 - 6800\text{MB}$ | $1800 - 3200\text{ms}$ | $30\%$ | $90 - 160$ | `Payment Service` (WARN: Socket unstable) $\rightarrow$ `Payment Service` (ERROR 502 Socket closed unexpectedly) |
+| **`DATABASE_OPERATIONS`**<br>*(Database Access)* | **`HEALTHY_DB_QUERY`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $8 - 25\text{ms}$ | $0\%$ | $160 - 240$ | `Order Service` (200) $\rightarrow$ `PostgreSQL` (200: Pool healthy 4/50) |
+| **`DATABASE_OPERATIONS`** | **`SLOW_DB_QUERY`** | 🟡 `DEGRADED` | `PostgreSQL` | $65\% - 82\%$ | $6200 - 7600\text{MB}$ | $1500 - 3100\text{ms}$ | $12\%$ | $120 - 190$ | `PostgreSQL` (WARN: Sequential scan on unindexed table query) |
+| **`DATABASE_OPERATIONS`** | **`DATABASE_POOL_EXHAUSTION`** | 🔴 `CRITICAL` | `PostgreSQL` | $86\% - 97\%$ | $8900 - 9800\text{MB}$ | $3200 - 5500\text{ms}$ | $35\%$ | $80 - 150$ | `Order Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `PostgreSQL` (WARN: Pool limit 48/50) $\rightarrow$ `PostgreSQL` (ERROR 500: Client acquisition timeout) $\rightarrow$ `Payment Service` (ERROR 500) $\rightarrow$ `Order Service` (ERROR 500) |
+| **`PRODUCT_SEARCH`**<br>*(Product Search)* | **`HEALTHY_SEARCH`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $10 - 35\text{ms}$ | $0\%$ | $150 - 250$ | `User Service` (200) $\rightarrow$ `Search Service` (200: Cache hit) $\rightarrow$ `Product Service` (200) |
+| **`PRODUCT_SEARCH`** | **`CACHE_MISS_STORM`** | 🟡 `DEGRADED` | `Redis` | $68\% - 84\%$ | $5900 - 7200\text{MB}$ | $1100 - 2300\text{ms}$ | $15\%$ | $130 - 210$ | `Search Service` (WARN: Cache miss storm on hot product key redis-cluster-01) |
+| **`USER_AUTH`**<br>*(User Auth)* | **`SUCCESSFUL_LOGIN`** | 🟢 `HEALTHY` | *None* | $14\% - 26\%$ | $3500 - 4600\text{MB}$ | $12 - 38\text{ms}$ | $0\%$ | $140 - 220$ | `User Service` (200) $\rightarrow$ `Authentication Service` (200: JWT token signed) |
+| **`USER_AUTH`** | **`AUTH_SERVICE_DOWN`** | 🔴 `FAILURE` | `Authentication Service` | $70\% - 85\%$ | $6100 - 7300\text{MB}$ | $2100 - 3800\text{ms}$ | $30\%$ | $100 - 170$ | `User Service` (200) $\rightarrow$ `Authentication Service` (WARN: Verification delay > 1500ms) $\rightarrow$ `Authentication Service` (ERROR 500: Secret key verification failure) |
 
 ---
 
-## 7. The Mathematical Root Cause Analysis (RCA) Engine
+## 6. Database Schema (In-Depth)
 
-This is the most advanced, mathematically complex feature in Cortex. When an incident occurs, Cortex generates a deterministic RCA report to prove exactly which service caused it. 
+To support real-time observability, distributed tracing, and RCA scoring, Cortex relies on four relational database tables.
 
-### Step 1: Time Boxing
-Cortex takes the exact timestamp of when the incident started, and draws a strict time window going back exactly 60 seconds. It pulls all the logs and metrics that occurred in this specific isolation window.
+### A. The `logs` Table
+Stores every event across all microservices in real-time with distributed trace context.
+- `id`: UUID primary key.
+- `request_id`: Unique ID assigned to a user request chain (e.g. `REQ-20260802-A563-000001`). All services invoked during this request share the same ID.
+- `span_id`: Unique ID for the specific step/function in the execution tree.
+- `parent_span_id`: References the calling service's `span_id`, building hierarchical trace execution trees.
+- `service_name`: Microservice name (`User Service`, `Order Service`, `Payment Service`, `Search Service`, `Authentication Service`, `Redis`, `PostgreSQL`).
+- `event_type`: Event category (`API_REQUEST`, `DATABASE_QUERY`, `PAYMENT`, `CACHE_ACCESS`, `AUTH`, `NOTIFICATION`, `SYSTEM`).
+- `endpoint`: API route or query endpoint (`/api/v1/payments/charge`).
+- `status_code`: HTTP status code (e.g. 200, 400, 500, 504).
+- `response_time_ms`: Function execution duration in milliseconds.
+- `level`: Log severity level (`INFO`, `WARN`, `ERROR`, `DEBUG`).
+- `message`: Log entry description text.
+- `timestamp`: Precise millisecond timestamp of entry.
 
-### Step 2: Trace Reconstruction
-The algorithm looks at the thousands of chaotic logs and sorts them. It groups them by request_id, and then uses span_id and parent_span_id to rebuild the exact "tree" of what happened (Service A called Service B, which called Service C).
+### B. The `system_metrics` Table
+Snapshots of hardware resources.
+- `id`: Primary key.
+- `cpu_usage`: Synthetic CPU usage percentage (0–100%).
+- `memory_usage_mb`: Synthetic RAM memory consumed in Megabytes.
+- `timestamp`: Snapshot timestamp.
 
-### Step 3: The Evidence Scoring System
-Cortex grades every single service that was involved in the outage using a strict 5-rule rubric. A service can earn a maximum of 140 points:
-1. First to Fail (+30 points): Did this service log the chronologically earliest error in the entire 60-second window?
-2. Upstream Source (+25 points): In the reconstructed tree, is this service at the very bottom? (If the Order Service fails because the Database failed, the Database is the upstream source).
-3. Downstream Propagation (+40 points): Did this service's failure successfully travel upwards and break the services that called it? This is the strongest indicator of a root cause.
-4. Latency Degradation (+20 points): Did this service's speed suddenly spike to more than 3x its normal 15-minute baseline speed?
-5. Repeated Failures (+25 points): Is this service causing errors across multiple different users' requests? (+5 points per request, capped at 25).
+### C. The `service_metrics` Table
+Stores historical baseline performance per microservice calculated by background aggregators.
+- `id`: Primary key.
+- `service_name`: Specific microservice name.
+- `request_count`: Total requests processed in the aggregation window.
+- `error_rate`: Percentage of failed requests ($\frac{\text{errorCount}}{\text{totalCount}} \times 100\%$).
+- `avg_latency`: Average execution speed (ms).
+- `p95_latency`: 95th Percentile latency (ms). 95% of requests ran faster than this benchmark.
+- `p99_latency`: 99th Percentile latency (ms).
+- `timestamp`: Aggregation window timestamp.
 
-### Step 4: The Resource Fallback Strategy
-Sometimes, an incident is caused by a massive CPU or Memory spike, and no service actually logged a red ERROR. In this scenario, Cortex cannot find a log tree, so it gracefully switches to a "Resource Fallback" strategy. It looks at the hardware metrics and ranks services based on which one experienced the highest spike in traffic throughput and latency exactly at the exact moment the CPU spiked.
-
-### Step 5: The Final Verdict
-Cortex tallies the points, selects the service with the highest score as the Root Cause, and calculates a Confidence Percentage (capped at 95% to avoid false certainty). It presents all this evidence in a beautiful, tabbed diagnostic card on the frontend.
-
----
-
-## 8. Incident Impact Diff (Before vs. During)
-
-Once you know what caused the problem, the very next question an engineer asks is: "Exactly how bad is the damage compared to normal?"
-
-Cortex provides a dedicated UI panel comparing the Root Cause service's performance before the incident to its performance during the incident.
-
-1. Baseline Window: Cortex calculates the exact average Latency, Error Rate, and Request Volume over a clean 15-minute period before the incident.
-2. Incident Window: It calculates the exact same metrics for the time the incident has been active.
-3. The Diff: It mathematically calculates the percentage difference, rendering a UI that explicitly tells the engineer: "P95 Latency has increased by +2233%!"
-
----
-
-## 9. Distributed Trace Explorer (Waterfall View)
-
-To provide the ultimate debugging experience, Cortex allows you to zoom all the way down to a single user's request. 
-
-If you click on any Request ID in the logs table anywhere on the dashboard, Cortex opens the Trace Explorer. This is a highly complex visual tool inspired by enterprise tools like Jaeger and Zipkin.
-
-- How it works: The backend fetches all the logs for that single Request ID. It then mathematically computes the exact start offset and duration of every single function call.
-- The Waterfall Gantt Chart: It draws a horizontal timeline. You can visually see a long blue bar for the User Service, and nested underneath it, a slightly shorter bar for the Order Service. It perfectly illustrates how services wait for each other over the network.
-- Error Highlighting: If a specific span in the timeline failed, its bar is drawn in bright crimson red, allowing you to instantly pinpoint the exact function that broke the user's request without reading a single line of text.
-- Edge-Case Handling: The timeline mathematically restricts absolute width percentages so that text labels never clip outside the modal container, ensuring a perfect UI experience.
+### D. The `incidents` Table
+Tracks system outage lifecycles.
+- `id`: UUID primary key.
+- `type`: Incident category (`LOG`, `CPU`, `MEMORY`).
+- `status`: State (`ACTIVE` or `RESOLVED`).
+- `trigger_reason`: Explanation of why Cortex opened the incident.
+- `resolution_reason`: Explanation of why Cortex auto-resolved it.
+- `created_at` & `resolved_at`: Outage duration timestamps.
 
 ---
 
-## 10. Codebase Directory Structure
+## 7. Background Telemetry Workers
 
-A quick overview of where things live in the repository:
+Cortex uses three background scripts ("Workers") running continuously on the server:
 
-Client (React Frontend)
-- src/components/Header.jsx: Top navigation and system status.
-- src/components/IncidentRcaModal.jsx: The massive Root Cause diagnostic panel.
-- src/components/LogsTable.jsx: Interactive log viewer.
-- src/components/MetricsCharts.jsx: CPU/Memory line charts.
-- src/components/ServiceHealthMap.jsx: Grid of service SLOs.
-- src/components/TopologyGraph.jsx: The SVG dependency map.
-- src/components/TraceExplorerModal.jsx: The Waterfall Gantt chart.
-- src/App.jsx: Main dashboard layout.
+### 1. The Log Generator (`logGenerator.js`)
+- **Interval**: Runs every **10 seconds**.
+- **Function**: Executes 2 complete user interaction request batches per tick driven by active Workflow $\rightarrow$ Scenario state.
+- **Trace Tree Math**: Generates shared `request_id` hashes, assigns parent-child `span_id` references, staggers start times, and dynamically calculates parent response times so child durations are cleanly encapsulated within parent execution spans.
 
-Server (Node.js Backend)
-- src/config/: DB and WebSocket configurations.
-- src/controllers/: Express route handlers (Health, Topology, Traces).
-- src/routes/: API routing definitions.
-- src/services/: Business logic (Correlation, Propagation, RCA Engine).
-- src/utils/: Helper functions (Incident Manager).
-- src/workers/logGenerator.js: Simulates traffic.
-- src/workers/latencyAggregator.js: Aggregates metrics.
-- src/workers/metricsCollector.js: Reads CPU/RAM.
+### 2. The Metrics Collector (`metricsCollector.js`)
+- **Interval**: Runs every **10 seconds**.
+- **Function**: Fetches synthetic CPU % and Memory MB metrics from `scenarioEngine.getCurrentTelemetryState()`, applies EMA smoothing, writes snapshots to `system_metrics`, and streams live updates via WebSockets.
+
+### 3. The Latency Aggregator (`latencyAggregator.js`)
+- **Interval**: Runs every **60 seconds**.
+- **Function**: Aggregates raw logs from the preceding 60 seconds, groups by service, computes exact **P95 and P99 latencies** and error rates, and updates `service_metrics` baselines.
 
 ---
 
-## 11. Complete Setup & Installation Guide
+## 8. Live Service Map & Topology Dependency Graph
 
-Running Cortex on your local machine is incredibly straightforward. You only need Node.js and a Neon database.
+### A. Live Service Health Map (SLOs)
+Renders real-time microservice health based on rolling error rates and latency vs. 15-minute baselines:
+- 🟢 **Healthy**: Error rate $< 1\%$, latency within baseline limits.
+- 🟡 **Degraded**: Error rate $\ge 1\%$ OR latency $> 2\times$ baseline.
+- 🔴 **Critical**: Error rate $> 5\%$ OR latency $> 5\times$ baseline.
 
-### 1. Set Up Your Database
-1. Go to Neon.tech and create a free account.
-2. Create a new PostgreSQL project.
-3. Copy the "Connection String" (it will look something like postgresql://username:password@hostname/dbname?sslmode=require).
+### B. Topology Dependency Graph with Pulsing Failure Edges
+- Draws an interactive SVG map of microservice dependencies (`User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service` $\rightarrow$ `Redis` / `PostgreSQL`).
+- **Active Failure Propagation Edges**: If an error spreads between two services within the last 60 seconds, the connecting edge **glows bright crimson red and pulses in real time**, indicating the active blast radius of the outage.
 
-### 2. Configure Environment Variables
-1. Open the project code and navigate to the server/ directory.
-2. Create a new file named .env.
-3. Add the following text to the file, replacing the DATABASE_URL with your copied string:
+---
+
+## 9. Mathematical Root Cause Analysis (RCA) Engine
+
+When an incident occurs, `rcaService.js` executes a deterministic RCA analysis across all services involved in the outage window. The engine is **100% generic** and evaluates raw database telemetry without hardcoded scenario shortcuts.
+
+### Step 1: Isolation Window ($\pm 60$ Seconds)
+Draws a time window from `created_at - 60 seconds` to `(resolved_at || NOW) + 60 seconds` to capture pre-incident lead-up events and live updates.
+
+### Step 2: Trace Tree Reconstruction
+Groups window telemetry by `request_id`, linking `span_id` and `parent_span_id` to reconstruct the exact microservice execution hierarchy.
+
+### Step 3: The 140-Point Evidence Scoring System (`scoringService.js`)
+Evaluates candidate services using a 5-rule rubric:
+
+$$\text{Total Score} = \text{FirstFail (30)} + \text{Upstream (25)} + \text{Propagation (40+25)} + \text{LatencySpike (20)}$$
+
+1. **First to Fail (+30 pts)**: Service logged the chronologically earliest `ERROR` log in the isolation window.
+2. **Upstream Dependency Tree Position (+25 pts)**: Uses deep recursive graph traversal ([evidenceService.js](file:///d:/Cortex/server/src/services/evidenceService.js)) down `dependencies.js`. Any deep underlying dependency (`Payment Service`, `PostgreSQL`, `Redis`) earns **+25 points**.
+3. **Downstream Error Propagation (+40 pts)**: Service failure traveled upward and broke calling upstream services.
+4. **Propagation Multiplier (+5 to +25 pts)**: $+5$ points per impacted downstream service (capped at 5 services).
+5. **Latency Degradation (+20 pts)**: Service latency spiked $>2\times$ its 15-minute baseline.
+
+---
+
+## 10. Microservice & Incident Log Explorer
+
+The dashboard provides a log exploration table supporting both global live streaming and isolated incident window trails:
+- **Real-Time Keyword Search**: Search across log messages, Request IDs, service names, and endpoints.
+- **Log Level Filters**: Filter by `ALL`, `INFO`, `WARN`, `ERROR`, or `DEBUG`.
+- **Service Name Filter**: Target specific microservices (`Payment Service`, `Order Service`, `PostgreSQL`, etc.).
+- **Event Type Filter**: Filter by category (`API_REQUEST`, `DATABASE_QUERY`, `PAYMENT`, `CACHE_ACCESS`, `AUTH`).
+- **Single-Row Controls Layout**: Header layout separates title and record counts vertically while aligning all filter dropdowns cleanly in a single horizontal row.
+
+---
+
+## 11. Incident Impact Diff & Distributed Trace Explorer
+
+### Incident Impact Diff (Before vs. During)
+Compares the root cause service's 15-minute pre-incident baseline metrics to active incident metrics, displaying percentage shifts (e.g. `P95 Latency increased by +2233%`).
+
+### Distributed Trace Explorer (Waterfall Gantt View)
+Clicking any `Request ID` opens a modal rendering a horizontal Gantt chart:
+- Visualizes start offsets and call durations for each service span.
+- Illustrates network call nesting (e.g. `User Service` waiting for `Order Service`).
+- Highlights failing spans in crimson red.
+
+---
+
+## 12. Codebase Directory Structure
+
+```text
+Cortex Monorepo Structure
+│
+├── client/ (React Frontend)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Header.jsx                 # Top bar & live WebSocket status
+│   │   │   ├── SummaryCards.jsx           # Telemetry count, CPU load, RAM, Error rate
+│   │   │   ├── MetricsCharts.jsx          # Live CPU & Memory Recharts area graphs
+│   │   │   ├── ServiceHealthMap.jsx       # Grid of microservice SLO indicators
+│   │   │   ├── TopologyGraph.jsx          # SVG map with active failure propagation edges
+│   │   │   ├── LogsTable.jsx              # Microservice & Incident log trail explorer
+│   │   │   ├── IncidentsList.jsx          # Outage history sidebar cards
+│   │   │   ├── IncidentRcaModal.jsx       # Root cause diagnostic modal & impact diff
+│   │   │   └── TraceExplorerModal.jsx    # Waterfall Gantt chart for distributed tracing
+│   │   ├── App.jsx                        # Main dashboard state & WebSockets
+│   │   └── main.jsx                       # Entry point
+│
+└── server/ (Node.js Backend)
+    ├── src/
+    │   ├── config/
+    │   │   ├── db.js                      # Neon PostgreSQL pool setup
+    │   │   ├── initDb.js                  # Auto-executes CREATE TABLE IF NOT EXISTS on boot
+    │   │   ├── dependencies.js            # Microservice topology mapping
+    │   │   ├── env.config.js              # Environment variables
+    │   │   └── socket.js                  # Socket.io WebSocket server
+    │   ├── scenario/                      # Unified Scenario Telemetry Engine
+    │   │   ├── scenario.constants.js      # Timing ratios, durations, phase definitions
+    │   │   ├── scenario.types.js          # JSDoc interfaces
+    │   │   ├── workflow.registry.js       # Business Workflows Registry
+    │   │   ├── scenario.registry.js       # Workflow-Owned Scenarios & Telemetry Matrix
+    │   │   ├── scenario.state.js          # 2-Step Hierarchy State & EMA Smoothing
+    │   │   ├── scenario.engine.js         # Request Batching & Trace Tree Calculations
+    │   │   ├── scenario.utils.js          # Math helpers & cryptographic request IDs
+    │   │   └── index.js                   # Barrel exports
+    │   ├── controllers/                   # API handlers (Health, Topology, Incidents, Traces)
+    │   ├── services/                      # Modular Business & Diagnostic Logic
+    │   │   ├── rcaService.js              # RCA execution & propagation chain traversal
+    │   │   ├── scoringService.js          # 140-Point evidence scoring algorithm
+    │   │   ├── evidenceService.js         # Gathers 5 diagnostic rubric metrics with deep DFS graph
+    │   │   ├── propagationService.js      # Detects active error edges across requests
+    │   │   └── correlationService.js      # Fetches log windows & groups spans by request_id
+    │   ├── workers/
+    │   │   ├── logGenerator.js            # Executes scenario-driven trace tree request batches
+    │   │   ├── metricsCollector.js        # Reads scenario state with EMA trend smoothing
+    │   │   └── latencyAggregator.js       # Calculates P95/P99 latency baselines (60s)
+    │   ├── app.js                         # Express app configuration & middleware
+    │   └── server.js                      # Entry point (App listen, initDb, launch workers)
+```
+
+---
+
+## 13. Setup & Local Installation Guide
+
+### Prerequisites
+- Node.js (v18 or higher)
+- A Neon PostgreSQL Database connection string (`postgresql://...`)
+
+### 1. Configure Backend Environment
+Create a `.env` file inside `server/`:
 ```env
 PORT=5000
 NODE_ENV=development
 DATABASE_URL=postgresql://[user]:[password]@[neon-hostname]/[dbname]?sslmode=require
 ```
 
-### 3. Start the Backend Server (Terminal 1)
-Open your computer's terminal (or command prompt), navigate to the backend folder, install the necessary packages, and start the engine:
+### 2. Run Backend Server (Terminal 1)
 ```bash
 cd server
 npm install
 npm run dev
 ```
-Note: The backend will run on port 5000. It will automatically connect to your database, automatically create all four tables if they don't exist, and begin generating fake telemetry traffic immediately.
+*Note: The backend automatically executes `initDb.js` on boot, creating all 4 database tables (`logs`, `system_metrics`, `service_metrics`, `incidents`) if missing, and immediately starts data workers.*
 
-### 4. Start the Frontend Dashboard (Terminal 2)
-Open a second terminal window, navigate to the frontend folder, install the packages, and start the user interface:
+### 3. Run Frontend Dashboard (Terminal 2)
 ```bash
 cd client
 npm install
 npm run dev
 ```
-Note: The frontend will usually run on port 3000 or 5173 depending on Vite.
-
-### 5. View the Platform
-Open your web browser and navigate to the URL provided in the frontend terminal (usually http://localhost:3000 or http://localhost:5173). 
-
-You will instantly see Cortex running, drawing live graphs, plotting telemetry, and occasionally triggering automated incidents based on the simulated traffic! 
-
-(Note: Because the Latency Aggregator worker runs every 60 seconds, the Live Service Map and Topology Graph will display a "Waiting for initial telemetry" message for the first minute after you start the server. This is by design!)
+*Note: The dashboard opens on `http://localhost:5173` or `http://localhost:3000`.*
 
 ---
 
-End of Documentation
+End of Documentation  
 Cortex represents a massive undertaking in understanding distributed systems, telemetry generation, algorithmic graph traversal, and real-time frontend data visualization. Enjoy exploring the code!
