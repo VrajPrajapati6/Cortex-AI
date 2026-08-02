@@ -1,11 +1,13 @@
 /**
- * Scenario Registry - Workflow-Specific Scenario Definitions
+ * Scenario Registry - Workflow-Specific Scenario Definitions with Layer 3 Parameterization Matrix
  *
- * Defines explicit telemetry specs (CPU, Memory, Latency ranges, Failure rates, Request volume, Log templates)
- * per scenario state, organized by parent workflow.
- *
- * IMPORTANT: Every scenario logTemplate array enforces a strict, logical execution sequence:
- * INFO (Request Entry) -> WARN (Degradation / Retry) -> ERROR (Root Failure) -> ERROR/WARN (Upstream Rollback/Cancellation)
+ * Defines explicit telemetry specs and Layer 3 Parameterization Matrix for offline simulation:
+ * - retryCount
+ * - queueLength
+ * - databaseState ('HEALTHY', 'SLOW', 'EXHAUSTED')
+ * - cacheState ('HIT', 'MISS_STORM', 'EVICT')
+ * - networkState ('OPTIMAL', 'JITTER', 'CONGESTED')
+ * - externalApiState ('HEALTHY', 'SLOW', 'DOWN')
  */
 
 export const SCENARIOS = {
@@ -17,7 +19,7 @@ export const SCENARIOS = {
     type: 'HEALTHY',
     severity: 'INFO',
     affectedServices: [],
-    rootCauseService: null,
+    rootCauseService: 'NONE',
     metrics: {
       cpuMin: 18,
       cpuMax: 32,
@@ -28,6 +30,14 @@ export const SCENARIOS = {
       failureProbability: 0.0,
       requestVolumeMin: 120,
       requestVolumeMax: 200
+    },
+    params: {
+      retryCountMin: 0, retryCountMax: 0,
+      queueLengthMin: 5, queueLengthMax: 25,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/checkout', level: 'INFO', message: 'Incoming POST request to place new order.', statusCode: 200, delayMs: 0 },
@@ -55,6 +65,14 @@ export const SCENARIOS = {
       requestVolumeMin: 140,
       requestVolumeMax: 220
     },
+    params: {
+      retryCountMin: 1, retryCountMax: 3,
+      queueLengthMin: 45, queueLengthMax: 120,
+      databaseState: 'SLOW',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
+    },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/orders', level: 'INFO', message: 'Incoming POST request to place new order.', statusCode: 200, delayMs: 0 },
       { serviceName: 'Order Service', eventType: 'SYSTEM', endpoint: '/api/v1/orders/calculate', level: 'WARN', message: 'High CPU utilization during discount matrix calculation.', statusCode: 200, delayMs: 180 },
@@ -80,6 +98,14 @@ export const SCENARIOS = {
       requestVolumeMin: 110,
       requestVolumeMax: 170
     },
+    params: {
+      retryCountMin: 0, retryCountMax: 1,
+      queueLengthMin: 15, queueLengthMax: 40,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
+    },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/orders', level: 'INFO', message: 'Incoming POST request to place new order.', statusCode: 200, delayMs: 0 },
       { serviceName: 'Order Service', eventType: 'ORDER', endpoint: '/api/v1/orders/reserve', level: 'WARN', message: 'Low inventory threshold detected for SKU-9921.', statusCode: 200, delayMs: 30 },
@@ -95,7 +121,7 @@ export const SCENARIOS = {
     type: 'HEALTHY',
     severity: 'INFO',
     affectedServices: [],
-    rootCauseService: null,
+    rootCauseService: 'NONE',
     metrics: {
       cpuMin: 20,
       cpuMax: 35,
@@ -106,6 +132,14 @@ export const SCENARIOS = {
       failureProbability: 0.0,
       requestVolumeMin: 130,
       requestVolumeMax: 210
+    },
+    params: {
+      retryCountMin: 0, retryCountMax: 0,
+      queueLengthMin: 8, queueLengthMax: 30,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/payments', level: 'INFO', message: 'Initiating payment authorization.', statusCode: 200, delayMs: 0 },
@@ -131,6 +165,14 @@ export const SCENARIOS = {
       failureProbability: 0.25,
       requestVolumeMin: 100,
       requestVolumeMax: 180
+    },
+    params: {
+      retryCountMin: 2, retryCountMax: 5,
+      queueLengthMin: 80, queueLengthMax: 180,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'CONGESTED',
+      externalApiState: 'SLOW'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/checkout', level: 'INFO', message: 'User initiated checkout process.', statusCode: 200, delayMs: 0 },
@@ -159,6 +201,14 @@ export const SCENARIOS = {
       requestVolumeMin: 90,
       requestVolumeMax: 160
     },
+    params: {
+      retryCountMin: 1, retryCountMax: 4,
+      queueLengthMin: 60, queueLengthMax: 130,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'JITTER',
+      externalApiState: 'DOWN'
+    },
     logTemplates: [
       { serviceName: 'Payment Service', eventType: 'EXTERNAL_API', endpoint: '/api/v1/payments/charge', level: 'WARN', message: 'Gateway socket connection unstable.', statusCode: 200, delayMs: 40 },
       { serviceName: 'Payment Service', eventType: 'EXTERNAL_API', endpoint: '/api/v1/payments/charge', level: 'ERROR', message: 'Third party gateway socket closed unexpectedly.', statusCode: 502, delayMs: 150 }
@@ -173,7 +223,7 @@ export const SCENARIOS = {
     type: 'HEALTHY',
     severity: 'INFO',
     affectedServices: [],
-    rootCauseService: null,
+    rootCauseService: 'NONE',
     metrics: {
       cpuMin: 15,
       cpuMax: 28,
@@ -184,6 +234,14 @@ export const SCENARIOS = {
       failureProbability: 0.0,
       requestVolumeMin: 160,
       requestVolumeMax: 240
+    },
+    params: {
+      retryCountMin: 0, retryCountMax: 0,
+      queueLengthMin: 4, queueLengthMax: 20,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
     },
     logTemplates: [
       { serviceName: 'Order Service', eventType: 'DATABASE_QUERY', endpoint: '/api/v1/db/query', level: 'INFO', message: 'Indexed lookup query executed in 12ms.', statusCode: 200, delayMs: 12 },
@@ -209,6 +267,14 @@ export const SCENARIOS = {
       requestVolumeMin: 120,
       requestVolumeMax: 190
     },
+    params: {
+      retryCountMin: 1, retryCountMax: 2,
+      queueLengthMin: 35, queueLengthMax: 90,
+      databaseState: 'SLOW',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
+    },
     logTemplates: [
       { serviceName: 'PostgreSQL', eventType: 'DATABASE_QUERY', endpoint: '/api/v1/db', level: 'WARN', message: 'Sequential scan detected on unindexed table query.', statusCode: 200, delayMs: 240 }
     ]
@@ -232,6 +298,14 @@ export const SCENARIOS = {
       requestVolumeMin: 80,
       requestVolumeMax: 150
     },
+    params: {
+      retryCountMin: 3, retryCountMax: 6,
+      queueLengthMin: 110, queueLengthMax: 220,
+      databaseState: 'EXHAUSTED',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
+    },
     logTemplates: [
       { serviceName: 'Order Service', eventType: 'API_REQUEST', endpoint: '/api/v1/orders', level: 'INFO', message: 'Order status query requested.', statusCode: 200, delayMs: 0 },
       { serviceName: 'Payment Service', eventType: 'API_REQUEST', endpoint: '/api/v1/payments', level: 'INFO', message: 'Fetching ledger history from database.', statusCode: 200, delayMs: 15 },
@@ -250,7 +324,7 @@ export const SCENARIOS = {
     type: 'HEALTHY',
     severity: 'INFO',
     affectedServices: [],
-    rootCauseService: null,
+    rootCauseService: 'NONE',
     metrics: {
       cpuMin: 15,
       cpuMax: 28,
@@ -261,6 +335,14 @@ export const SCENARIOS = {
       failureProbability: 0.0,
       requestVolumeMin: 150,
       requestVolumeMax: 250
+    },
+    params: {
+      retryCountMin: 0, retryCountMax: 0,
+      queueLengthMin: 5, queueLengthMax: 25,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/products/search', level: 'INFO', message: 'User initiated product search query.', statusCode: 200, delayMs: 0 },
@@ -287,6 +369,14 @@ export const SCENARIOS = {
       requestVolumeMin: 130,
       requestVolumeMax: 210
     },
+    params: {
+      retryCountMin: 1, retryCountMax: 3,
+      queueLengthMin: 50, queueLengthMax: 140,
+      databaseState: 'HEALTHY',
+      cacheState: 'MISS_STORM',
+      networkState: 'JITTER',
+      externalApiState: 'HEALTHY'
+    },
     logTemplates: [
       { serviceName: 'Search Service', eventType: 'CACHE_ACCESS', endpoint: '/api/v1/cache', level: 'WARN', message: 'Cache miss storm on hot product key: redis-cluster-01.', statusCode: 200, delayMs: 140 }
     ]
@@ -300,7 +390,7 @@ export const SCENARIOS = {
     type: 'HEALTHY',
     severity: 'INFO',
     affectedServices: [],
-    rootCauseService: null,
+    rootCauseService: 'NONE',
     metrics: {
       cpuMin: 14,
       cpuMax: 26,
@@ -311,6 +401,14 @@ export const SCENARIOS = {
       failureProbability: 0.0,
       requestVolumeMin: 140,
       requestVolumeMax: 220
+    },
+    params: {
+      retryCountMin: 0, retryCountMax: 0,
+      queueLengthMin: 5, queueLengthMax: 20,
+      databaseState: 'HEALTHY',
+      cacheState: 'HIT',
+      networkState: 'OPTIMAL',
+      externalApiState: 'HEALTHY'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/auth/login', level: 'INFO', message: 'User login request received.', statusCode: 200, delayMs: 0 },
@@ -335,6 +433,14 @@ export const SCENARIOS = {
       failureProbability: 0.30,
       requestVolumeMin: 100,
       requestVolumeMax: 170
+    },
+    params: {
+      retryCountMin: 2, retryCountMax: 4,
+      queueLengthMin: 70, queueLengthMax: 150,
+      databaseState: 'HEALTHY',
+      cacheState: 'EVICT',
+      networkState: 'JITTER',
+      externalApiState: 'SLOW'
     },
     logTemplates: [
       { serviceName: 'User Service', eventType: 'API_REQUEST', endpoint: '/api/v1/auth/login', level: 'INFO', message: 'User login request received.', statusCode: 200, delayMs: 0 },
