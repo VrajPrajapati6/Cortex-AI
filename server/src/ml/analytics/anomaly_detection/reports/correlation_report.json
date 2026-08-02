@@ -1,0 +1,102 @@
+{
+  "highest_target_correlation": {
+    "feature": "warn_log_count",
+    "correlation": 1.0
+  },
+  "perfect_correlation_pairs_count": 6,
+  "high_correlation_pairs_count": 12,
+  "perfect_correlation_pairs": [
+    {
+      "feature_1": "affected_services_count",
+      "feature_2": "propagation_depth",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "affected_services_count",
+      "feature_2": "propagation_chain_length",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "failed_requests",
+      "feature_2": "error_log_count",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "p95_latency",
+      "feature_2": "p99_latency",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "warn_log_count",
+      "feature_2": "is_anomaly",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "propagation_depth",
+      "feature_2": "propagation_chain_length",
+      "correlation": 1.0
+    }
+  ],
+  "high_correlation_pairs": [
+    {
+      "feature_1": "request_volume",
+      "feature_2": "successful_requests",
+      "correlation": 0.9999
+    },
+    {
+      "feature_1": "failed_requests",
+      "feature_2": "success_rate",
+      "correlation": 0.9791
+    },
+    {
+      "feature_1": "failed_requests",
+      "feature_2": "error_rate",
+      "correlation": 0.9791
+    },
+    {
+      "feature_1": "failed_requests",
+      "feature_2": "critical_log_count",
+      "correlation": 0.9519
+    },
+    {
+      "feature_1": "success_rate",
+      "feature_2": "error_rate",
+      "correlation": 1.0
+    },
+    {
+      "feature_1": "success_rate",
+      "feature_2": "error_log_count",
+      "correlation": 0.9791
+    },
+    {
+      "feature_1": "success_rate",
+      "feature_2": "critical_log_count",
+      "correlation": 0.9537
+    },
+    {
+      "feature_1": "error_rate",
+      "feature_2": "error_log_count",
+      "correlation": 0.9791
+    },
+    {
+      "feature_1": "error_rate",
+      "feature_2": "critical_log_count",
+      "correlation": 0.9537
+    },
+    {
+      "feature_1": "average_latency",
+      "feature_2": "p95_latency",
+      "correlation": 0.9556
+    },
+    {
+      "feature_1": "average_latency",
+      "feature_2": "p99_latency",
+      "correlation": 0.9556
+    },
+    {
+      "feature_1": "error_log_count",
+      "feature_2": "critical_log_count",
+      "correlation": 0.9519
+    }
+  ]
+}

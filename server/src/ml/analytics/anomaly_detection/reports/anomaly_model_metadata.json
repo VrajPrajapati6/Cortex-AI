@@ -1,0 +1,20 @@
+{
+  "model_name": "Binary Anomaly Detection Classifier",
+  "model_version": "3A Baseline",
+  "training_timestamp": "2026-08-02T18:38:05.733602",
+  "dataset_version": "v1.0 (200,000 synthetic windows)",
+  "feature_count": 33,
+  "training_samples": 160000,
+  "testing_samples": 40000,
+  "evaluation_metrics": {
+    "accuracy_pct": 100.0,
+    "balanced_accuracy_pct": 100.0,
+    "roc_auc": 1.0,
+    "mcc": 1.0,
+    "cohen_kappa": 1.0,
+    "log_loss": 0.0
+  },
+  "python_version": "3.14.6",
+  "xgboost_version": "3.3.0",
+  "random_seed": 42
+}
