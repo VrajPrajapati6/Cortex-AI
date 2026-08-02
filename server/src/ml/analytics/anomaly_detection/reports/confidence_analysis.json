@@ -1,0 +1,24 @@
+{
+  "average_confidence_pct": 100.0,
+  "median_confidence_pct": 100.0,
+  "min_confidence_pct": 100.0,
+  "max_confidence_pct": 100.0,
+  "confidence_histogram": {
+    "90_100_pct": {
+      "count": 40000,
+      "percentage": 100.0
+    },
+    "80_90_pct": {
+      "count": 0,
+      "percentage": 0.0
+    },
+    "70_80_pct": {
+      "count": 0,
+      "percentage": 0.0
+    },
+    "below_70_pct": {
+      "count": 0,
+      "percentage": 0.0
+    }
+  }
+}

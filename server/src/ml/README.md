@@ -436,13 +436,75 @@ Actual_NONE                4              0                 0           15881
 - `server/src/ml/models/encoders/target_incident_type_encoder.pkl`: Fitted Target Encoder
 - `server/src/ml/models/encoders/categorical_feature_encoders.pkl`: Fitted Categorical Encoders
 - `server/src/ml/models/encoders/feature_names.json`: 33 Predictor Feature Order
-- `server/src/ml/artifacts/classification_report.json`
-- `server/src/ml/artifacts/evaluation_metadata.json`
-- `server/src/ml/artifacts/confusion_matrix.csv`
-- `server/src/ml/artifacts/misclassified_samples.csv`
-- `server/src/ml/artifacts/feature_importance.csv`
-- `server/src/ml/artifacts/shap_feature_importance.csv`
-- `server/src/ml/artifacts/sample_explanations.csv`
-- `server/src/ml/artifacts/model_explainability_report.md`
-- `server/src/ml/artifacts/plots/`: `confusion_matrix.png`, `feature_importance_gain.png`, `shap_summary_plot.png`, `waterfall_*.png`
-- `server/src/ml/artifacts/metadata/explainability_metadata.json`
+- `server/src/ml/analytics/data/`: `confusion_matrix.csv`, `misclassified_samples.csv`, `feature_importance.csv`, `shap_feature_importance.csv`, `sample_explanations.csv`
+- `server/src/ml/analytics/reports/`: `classification_report.json`, `evaluation_metadata.json`, `explainability_metadata.json`, `model_explainability_report.md`
+- `server/src/ml/analytics/plots/`: `confusion_matrix.png`, `feature_importance_gain.png`, `shap_summary_plot.png`, `waterfall_*.png`
+
+---
+
+# 🛡️ Model 1 Implementation & Production Evaluation Details (Binary Anomaly Detector)
+
+## 1. Executive Summary & Production Status
+Model 1 is a production-grade **binary real-time anomaly detection engine**. Built using **XGBoost Classifier**, it evaluates operational telemetry vectors ($X \in \mathbb{R}^{33}$) to classify incoming system states into 2 binary target classes:
+- **`0` (Normal)**: Healthy system baseline behavior.
+- **`1` (Anomaly)**: Anomalous, degraded, or failure state requiring early-warning intervention.
+
+---
+
+## 2. Model Architecture & Hyperparameters
+
+```json
+{
+  "objective": "binary:logistic",
+  "eval_metric": "logloss",
+  "max_depth": 6,
+  "learning_rate": 0.1,
+  "n_estimators": 200,
+  "subsample": 0.8,
+  "colsample_bytree": 0.8,
+  "random_state": 42,
+  "tree_method": "hist"
+}
+```
+
+---
+
+## 3. Comprehensive Evaluation Metrics (Phase 3A)
+
+Evaluated on **40,000 unseen test samples**:
+
+- **Overall Accuracy**: **100.00%** (40,000 / 40,000 correct)
+- **Balanced Accuracy**: **100.00%**
+- **ROC-AUC Score**: **1.0000**
+- **Matthews Correlation Coefficient (MCC)**: **1.0000**
+- **Cohen's Kappa**: **1.0000**
+- **Binary Log Loss**: **0.0000**
+
+### Per-Class Performance Breakdown:
+| Target Class | Precision | Recall | F1-Score | Support | Accuracy % |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **`0` (Normal)** | **100.00%** | **100.00%** | **100.00%** | 15,881 | **100.00%** |
+| **`1` (Anomaly)** | **100.00%** | **100.00%** | **100.00%** | 24,119 | **100.00%** |
+
+---
+
+## 4. Confusion Matrix Audit & Misclassification Analysis
+
+```text
+               Predicted_Normal  Predicted_Anomaly
+Actual_Normal             15881                  0
+Actual_Anomaly                0              24119
+```
+
+- **False Positives (Normal predicted as Anomaly)**: **0 samples (0.00%)**
+- **False Negatives (Anomaly predicted as Normal)**: **0 samples (0.00%)**
+- **Total Misclassified Samples**: **0 / 40,000 samples** (**0.00% error rate**)
+
+---
+
+## 5. Production Artifacts Location (Model 1)
+
+- **`server/src/ml/models/anomaly_xgboost_classifier.pkl`**: **Official Binary Anomaly Model Artifact**
+- `server/src/ml/analytics/anomaly_detection/reports/`: `classification_report.json`, `confidence_analysis.json`, `anomaly_model_metadata.json`, `anomaly_model_report.md`
+- `server/src/ml/analytics/anomaly_detection/data/`: `confusion_matrix.csv`, `misclassified_samples.csv`, `feature_importance.csv`, `shap_feature_importance.csv`, `sample_explanations.csv`
+- `server/src/ml/analytics/anomaly_detection/plots/`: `confusion_matrix.png`, `feature_importance_*.png`, `shap_summary_plot.png`, `shap_bar_plot.png`, `waterfall_*.png`

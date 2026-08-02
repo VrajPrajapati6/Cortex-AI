@@ -1,0 +1,8 @@
+Removed Feature,Test Accuracy (%),Accuracy Drop (%)
+None (Full Baseline),100.0,0.0
+degraded_services_count,100.0,0.0
+affected_services_count,100.0,0.0
+healthy_services_count,100.0,0.0
+cpu_usage,100.0,0.0
+memory_usage,100.0,0.0
+warn_log_count,100.0,0.0
