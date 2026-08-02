@@ -1,0 +1,32 @@
+{
+  "model_name": "Baseline XGBoost Incident Predictor",
+  "model_version": "2A.1 Baseline",
+  "dataset_version": "v1.0 (200,000 synthetic windows)",
+  "total_features": 33,
+  "top_10_shap_features": [
+    "affected_services_count",
+    "cpu_usage",
+    "memory_usage",
+    "warn_log_count",
+    "database_state",
+    "healthy_services_count",
+    "memory_trend",
+    "primary_service",
+    "p95_latency",
+    "average_latency"
+  ],
+  "top_10_xgboost_features": [
+    "affected_services_count",
+    "warn_log_count",
+    "database_state",
+    "degraded_services_count",
+    "healthy_services_count",
+    "propagation_depth",
+    "cpu_usage",
+    "primary_service",
+    "memory_usage",
+    "info_log_count"
+  ],
+  "shap_library_version": "0.52.0",
+  "generation_timestamp": "2026-08-02T17:17:39.754526"
+}
