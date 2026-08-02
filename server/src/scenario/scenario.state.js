@@ -33,6 +33,24 @@ class ScenarioState {
   }
 
   /**
+   * Forces a 2-step transition to a new Workflow -> Scenario hierarchy (used in offline dataset generator).
+   */
+  forceTransition() {
+    const workflows = getAllWorkflows();
+    this.activeWorkflow = workflows[getRandomInt(0, workflows.length - 1)];
+
+    const workflowScenarios = getScenariosForWorkflow(this.activeWorkflow.id);
+    this.currentScenario = workflowScenarios[getRandomInt(0, workflowScenarios.length - 1)];
+
+    this.phase = this.currentScenario.type === 'HEALTHY'
+      ? SCENARIO_CONSTANTS.PHASES.HEALTHY
+      : (this.currentScenario.type === 'CRITICAL' ? SCENARIO_CONSTANTS.PHASES.CRITICAL : SCENARIO_CONSTANTS.PHASES.DEGRADED);
+
+    this.startTime = Date.now();
+    return true;
+  }
+
+  /**
    * Checks if current scenario duration has expired and transitions via 2-step hierarchy:
    * System -> 1. Select Workflow -> 2. Select Scenario owned by that Workflow
    */
@@ -42,25 +60,7 @@ class ScenarioState {
       return false; // Still active
     }
 
-    // Step 1: Randomly select a Workflow
-    const workflows = getAllWorkflows();
-    this.activeWorkflow = workflows[getRandomInt(0, workflows.length - 1)];
-
-    // Step 2: Select a Scenario owned strictly by that Workflow
-    const workflowScenarios = getScenariosForWorkflow(this.activeWorkflow.id);
-    this.currentScenario = workflowScenarios[getRandomInt(0, workflowScenarios.length - 1)];
-
-    this.phase = this.currentScenario.type === 'HEALTHY'
-      ? SCENARIO_CONSTANTS.PHASES.HEALTHY
-      : (this.currentScenario.type === 'CRITICAL' ? SCENARIO_CONSTANTS.PHASES.CRITICAL : SCENARIO_CONSTANTS.PHASES.DEGRADED);
-
-    this.durationMs = this.currentScenario.type === 'HEALTHY'
-      ? getRandomInt(SCENARIO_CONSTANTS.HEALTHY_DURATION_MS.min, SCENARIO_CONSTANTS.HEALTHY_DURATION_MS.max)
-      : getRandomInt(SCENARIO_CONSTANTS.FAILURE_DURATION_MS.min, SCENARIO_CONSTANTS.FAILURE_DURATION_MS.max);
-
-    this.startTime = Date.now();
-    console.log(`[Scenario Engine] 🔄 Transition -> Workflow: "${this.activeWorkflow.name}" | Scenario: "${this.currentScenario.name}" (${this.phase}) for ${Math.round(this.durationMs / 1000)}s`);
-    return true;
+    return this.forceTransition();
   }
 
   /**

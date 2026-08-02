@@ -49,55 +49,222 @@ The processing engine that ingests data, runs background telemetry workers, mana
 
 ## 3. Microservices & Infrastructure Inventory
 
-Cortex models a real-world enterprise e-commerce backend topology consisting of **5 core microservices** and **2 storage engines**:
+Cortex models a real-world enterprise microservices ecosystem consisting of **5 Business Workflows**, **11 Pre-configured Scenarios**, and **10 Services & Storage Engines**:
 
-| Service Name | Category | Primary Function | Upstream Dependencies | Downstream Dependencies |
-| :--- | :--- | :--- | :--- | :--- |
-| **`User Service`** | Gateway API | Public entry point for user sessions, search, and checkout. | *None (Client)* | `Order Service`, `Search Service`, `Authentication Service` |
-| **`Order Service`** | Domain API | Handles shopping cart state, discount matrix, and order placement. | `User Service` | `Payment Service`, `Inventory Service`, `PostgreSQL` |
-| **`Payment Service`** | Financial API | Charges payment methods, calls external gateways, commits ledger records. | `Order Service` | `Redis`, `PostgreSQL` |
-| **`Search Service`** | Discovery API | Catalog queries, product search, and cache lookups. | `User Service` | `Redis`, `Product Service` |
-| **`Authentication Service`** | Identity API | User login, JWT token verification, and session signing. | `User Service` | `Redis` |
-| **`Redis`** | Cache Engine | In-memory key-value cache cluster for product lookups and tokens. | `Search Service`, `Authentication Service`, `Payment Service` | *None* |
-| **`PostgreSQL`** | Relational DB | Relational storage for orders, user ledgers, and metrics history. | `Order Service`, `Payment Service` | *None* |
+### Complete Services Breakdown (10 Components)
 
----
-
-## 4. Phase 1 — Unified Scenario Telemetry Generation Engine
-
-Telemetry in Cortex is driven by a single source of truth: the **Scenario Engine** (`server/src/scenario/`). Rather than sampling local PC hardware independently, every generated telemetry window represents one coherent production system state where logs, CPU load, RAM footprint, latencies, and status codes move in cause-and-effect harmony.
-
-### The 2-Step Selection Hierarchy
-
-$$\text{System} \longrightarrow \text{Step 1: Select Workflow} \longrightarrow \text{Step 2: Select Owned Scenario} \longrightarrow \text{Request Volume} \longrightarrow \text{Sequential Logs} \longrightarrow \text{Workload Metrics}$$
-
-1. **Step 1 — Select a Business Workflow**: The engine randomly selects a business operation (e.g. `Place Order & Checkout`).
-2. **Step 2 — Select an Owned Scenario**: The engine selects a scenario owned *strictly* by that workflow (e.g. `Payment Gateway Timeout`).
-3. **Step 3 — Request Volume Scaling**: Calculates incoming user traffic volume (e.g. 142 Users). Higher traffic volume scales target CPU % and Memory MB workload footprint.
-4. **Step 4 — Sequential Request Execution**: Executes each request through trace chains (`User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service`).
-5. **Step 5 — Exponential Moving Average (EMA) Smoothing**: CPU and Memory metrics adjust smoothly across ticks ($\text{smoothCpu} = 0.4 \times \text{targetCpu} + 0.6 \times \text{prevCpu}$), creating organic, realistic trend lines.
+| # | Service / System | Role & Category | Primary Function | Upstream Callers | Downstream Dependencies |
+| :-: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **`User Service`** | Gateway API | Public ingress gateway handling checkout, auth, search, & session routes. | *Client Ingress* | `Order Service`, `Search Service`, `Authentication Service` |
+| **2** | **`Order Service`** | Domain API | Handles cart checkout, discount matrix calculations, & inventory holds. | `User Service` | `Payment Service`, `Inventory Service`, `PostgreSQL` |
+| **3** | **`Payment Service`** | Financial API | Charges payment methods, calls 3rd-party gateways, & writes ledgers. | `Order Service` | `Redis`, `PostgreSQL` |
+| **4** | **`Search Service`** | Discovery API | Manages search indexing, cache lookups, & catalog requests. | `User Service` | `Redis`, `Product Service` |
+| **5** | **`Authentication Service`** | Identity API | Handles user login verification, JWT token signing, & session validation. | `User Service` | `Redis` |
+| **6** | **`Product Service`** | Domain API | Provides product catalog info, product details, & availability metadata. | `Search Service` | *None* |
+| **7** | **`Inventory Service`** | Domain API | Tracks product inventory counts, stock thresholds, & reserve holds. | `Order Service` | *None* |
+| **8** | **`Notification Service`** | Utility API | Handles asynchronous user alerts, email notifications, & order confirmation dispatch. | `Order Service`, `Payment Service` | *None* |
+| **9** | **`Redis`** | Cache Engine | In-memory key-value cache cluster for product lookups & session tokens. | `Search Service`, `Authentication Service`, `Payment Service` | *None* |
+| **10** | **`PostgreSQL`** | Relational DB | Relational database for orders, transaction ledgers, & system metrics. | `Order Service`, `Payment Service` | *None* |
 
 ---
 
-## 5. Complete Workflow & Scenario Matrix
+## 4. Logical Workflow & Scenario Telemetry Engine
 
-Below is the exhaustive telemetry matrix detailing all **5 Business Workflows** and their **11 Scenarios**:
+Telemetry in Cortex is driven by a single source of truth: the **Scenario Engine** (`server/src/scenario/`). Rather than sampling local PC hardware independently, every telemetry window represents one coherent production state where logs, CPU load, RAM footprint, latencies, status codes, and network parameters move in cause-and-effect harmony.
 
-| Workflow | Scenario Name | Type | Root Cause Service | CPU % Range | Memory MB Range | Latency Range | Failure Rate | Traffic Vol. (Users) | Sequential Log Sequence & Status Codes |
+### The 6-Stage System Engine Pipeline
+
+$$\text{Business Workflow} \longrightarrow \text{Scenario} \longrightarrow \text{Incoming Request Volume} \longrightarrow \text{Request Execution} \longrightarrow \text{Sequential Logs} \longrightarrow \text{Generated Metrics}$$
+
+1. **Step 1 — Workflow Selection**: First, select a business operation randomly from configurable probabilities (`ORDER_PLACEMENT`, `PAYMENT_PROCESSING`, `DATABASE_OPERATIONS`, `PRODUCT_SEARCH`, `USER_AUTH`).
+2. **Step 2 — Scenario Selection**: Select a scenario owned *strictly* by that workflow (e.g., `Order Processing CPU Runaway` under `ORDER_PLACEMENT`).
+3. **Step 3 — Request Volume Scaling**: Computes incoming user traffic volume (e.g. 140–220 users). Higher traffic volume dynamically scales target CPU % and Memory MB workload footprint.
+4. **Step 4 — Sequential Request Execution**: Executes requests through realistic service chains (`User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service` $\rightarrow$ `PostgreSQL`).
+5. **Step 5 — Sequential Log Trail & Error Context**: Generates ordered log entries. Warnings precede errors in sequence, preserving real-world cause-and-effect debugging chains.
+6. **Step 6 — Exponential Moving Average (EMA) Smoothing**: CPU and Memory metrics adjust smoothly across ticks ($\text{smoothCpu} = 0.4 \times \text{targetCpu} + 0.6 \times \text{prevCpu}$), generating organic hardware trends.
+
+---
+
+## 5. Comprehensive Workflow, Scenario & Telemetry Matrix
+
+Below is the complete, high-level reference matrix covering all **5 Workflows** and **11 Scenarios**:
+
+| Workflow | Scenario ID | Type | Root Cause | CPU Range | RAM Range | Latency Range | Failure % | Traffic (Users) | Parameter Matrix (Retry / Queue / DB / Cache / Network / Ext API) |
 | :--- | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **`ORDER_PLACEMENT`**<br>*(Place Order & Checkout)* | **`HEALTHY_CHECKOUT`** | 🟢 `HEALTHY` | *None* | $18\% - 32\%$ | $3800 - 5200\text{MB}$ | $15 - 45\text{ms}$ | $0\%$ | $120 - 200$ | `User Service` (200) $\rightarrow$ `Order Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `Notification Service` (200) |
-| **`ORDER_PLACEMENT`** | **`CPU_RUNAWAY_SPIKE`** | 🟡 `DEGRADED` | `Order Service` | $82\% - 95\%$ | $4800 - 5800\text{MB}$ | $1200 - 2400\text{ms}$ | $15\%$ | $140 - 220$ | `User Service` (200) $\rightarrow$ `Order Service` (WARN: Discount matrix high CPU) $\rightarrow$ `Payment Service` (200) |
-| **`ORDER_PLACEMENT`** | **`INVENTORY_HOLD_FAILURE`** | 🔴 `FAILURE` | `Order Service` | $35\% - 55\%$ | $4200 - 5400\text{MB}$ | $450 - 950\text{ms}$ | $20\%$ | $110 - 170$ | `User Service` (200) $\rightarrow$ `Order Service` (WARN: Low stock) $\rightarrow$ `Order Service` (ERROR 400: Stock SKU-9921 exhausted) |
-| **`PAYMENT_PROCESSING`**<br>*(Payment Processing)* | **`PAYMENT_SUCCESS`** | 🟢 `HEALTHY` | *None* | $20\% - 35\%$ | $4000 - 5400\text{MB}$ | $25 - 65\text{ms}$ | $0\%$ | $130 - 210$ | `User Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `PostgreSQL` (200) |
-| **`PAYMENT_PROCESSING`** | **`PAYMENT_GATEWAY_TIMEOUT`** | 🔴 `FAILURE` | `Payment Service` | $72\% - 88\%$ | $6400 - 7800\text{MB}$ | $2500 - 4800\text{ms}$ | $25\%$ | $100 - 180$ | `User Service` (200) $\rightarrow$ `Order Service` (200) $\rightarrow$ `Payment Service` (WARN: Latency > 3000ms) $\rightarrow$ `Payment Service` (ERROR 504 Timeout) $\rightarrow$ `Order Service` (ERROR 400 Rollback) |
-| **`PAYMENT_PROCESSING`** | **`GATEWAY_CONNECTION_REFUSED`** | 🔴 `FAILURE` | `Payment Service` | $60\% - 75\%$ | $5800 - 6800\text{MB}$ | $1800 - 3200\text{ms}$ | $30\%$ | $90 - 160$ | `Payment Service` (WARN: Socket unstable) $\rightarrow$ `Payment Service` (ERROR 502 Socket closed unexpectedly) |
-| **`DATABASE_OPERATIONS`**<br>*(Database Access)* | **`HEALTHY_DB_QUERY`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $8 - 25\text{ms}$ | $0\%$ | $160 - 240$ | `Order Service` (200) $\rightarrow$ `PostgreSQL` (200: Pool healthy 4/50) |
-| **`DATABASE_OPERATIONS`** | **`SLOW_DB_QUERY`** | 🟡 `DEGRADED` | `PostgreSQL` | $65\% - 82\%$ | $6200 - 7600\text{MB}$ | $1500 - 3100\text{ms}$ | $12\%$ | $120 - 190$ | `PostgreSQL` (WARN: Sequential scan on unindexed table query) |
-| **`DATABASE_OPERATIONS`** | **`DATABASE_POOL_EXHAUSTION`** | 🔴 `CRITICAL` | `PostgreSQL` | $86\% - 97\%$ | $8900 - 9800\text{MB}$ | $3200 - 5500\text{ms}$ | $35\%$ | $80 - 150$ | `Order Service` (200) $\rightarrow$ `Payment Service` (200) $\rightarrow$ `PostgreSQL` (WARN: Pool limit 48/50) $\rightarrow$ `PostgreSQL` (ERROR 500: Client acquisition timeout) $\rightarrow$ `Payment Service` (ERROR 500) $\rightarrow$ `Order Service` (ERROR 500) |
-| **`PRODUCT_SEARCH`**<br>*(Product Search)* | **`HEALTHY_SEARCH`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $10 - 35\text{ms}$ | $0\%$ | $150 - 250$ | `User Service` (200) $\rightarrow$ `Search Service` (200: Cache hit) $\rightarrow$ `Product Service` (200) |
-| **`PRODUCT_SEARCH`** | **`CACHE_MISS_STORM`** | 🟡 `DEGRADED` | `Redis` | $68\% - 84\%$ | $5900 - 7200\text{MB}$ | $1100 - 2300\text{ms}$ | $15\%$ | $130 - 210$ | `Search Service` (WARN: Cache miss storm on hot product key redis-cluster-01) |
-| **`USER_AUTH`**<br>*(User Auth)* | **`SUCCESSFUL_LOGIN`** | 🟢 `HEALTHY` | *None* | $14\% - 26\%$ | $3500 - 4600\text{MB}$ | $12 - 38\text{ms}$ | $0\%$ | $140 - 220$ | `User Service` (200) $\rightarrow$ `Authentication Service` (200: JWT token signed) |
-| **`USER_AUTH`** | **`AUTH_SERVICE_DOWN`** | 🔴 `FAILURE` | `Authentication Service` | $70\% - 85\%$ | $6100 - 7300\text{MB}$ | $2100 - 3800\text{ms}$ | $30\%$ | $100 - 170$ | `User Service` (200) $\rightarrow$ `Authentication Service` (WARN: Verification delay > 1500ms) $\rightarrow$ `Authentication Service` (ERROR 500: Secret key verification failure) |
+| **`ORDER_PLACEMENT`** | **`HEALTHY_CHECKOUT`** | 🟢 `HEALTHY` | *None* | $18\% - 32\%$ | $3800 - 5200\text{MB}$ | $15 - 45\text{ms}$ | $0\%$ | $120 - 200$ | Retries: 0 \| Queue: 5-25 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`ORDER_PLACEMENT`** | **`CPU_RUNAWAY_SPIKE`** | 🟡 `DEGRADED` | `Order Service` | $82\% - 95\%$ | $4800 - 5800\text{MB}$ | $1200 - 2400\text{ms}$ | $15\%$ | $140 - 220$ | Retries: 1-3 \| Queue: 45-120 \| DB: `SLOW` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`ORDER_PLACEMENT`** | **`INVENTORY_HOLD_FAILURE`** | 🔴 `FAILURE` | `Order Service` | $35\% - 55\%$ | $4200 - 5400\text{MB}$ | $450 - 950\text{ms}$ | $20\%$ | $110 - 170$ | Retries: 0-1 \| Queue: 15-40 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`PAYMENT_PROCESSING`** | **`PAYMENT_SUCCESS`** | 🟢 `HEALTHY` | *None* | $20\% - 35\%$ | $4000 - 5400\text{MB}$ | $25 - 65\text{ms}$ | $0\%$ | $130 - 210$ | Retries: 0 \| Queue: 8-30 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`PAYMENT_PROCESSING`** | **`PAYMENT_GATEWAY_TIMEOUT`** | 🔴 `FAILURE` | `Payment Service` | $72\% - 88\%$ | $6400 - 7800\text{MB}$ | $2500 - 4800\text{ms}$ | $25\%$ | $100 - 180$ | Retries: 2-5 \| Queue: 80-180 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `CONGESTED` \| Ext API: `SLOW` |
+| **`PAYMENT_PROCESSING`** | **`GATEWAY_CONNECTION_REFUSED`** | 🔴 `FAILURE` | `Payment Service` | $60\% - 75\%$ | $5800 - 6800\text{MB}$ | $1800 - 3200\text{ms}$ | $30\%$ | $90 - 160$ | Retries: 1-4 \| Queue: 60-130 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `JITTER` \| Ext API: `DOWN` |
+| **`DATABASE_OPERATIONS`** | **`HEALTHY_DB_QUERY`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $8 - 25\text{ms}$ | $0\%$ | $160 - 240$ | Retries: 0 \| Queue: 4-20 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`DATABASE_OPERATIONS`** | **`SLOW_DB_QUERY`** | 🟡 `DEGRADED` | `PostgreSQL` | $65\% - 82\%$ | $6200 - 7600\text{MB}$ | $1500 - 3100\text{ms}$ | $12\%$ | $120 - 190$ | Retries: 1-2 \| Queue: 35-90 \| DB: `SLOW` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`DATABASE_OPERATIONS`** | **`DATABASE_POOL_EXHAUSTION`** | 🔴 `CRITICAL` | `PostgreSQL` | $86\% - 97\%$ | $8900 - 9800\text{MB}$ | $3200 - 5500\text{ms}$ | $35\%$ | $80 - 150$ | Retries: 3-6 \| Queue: 110-220 \| DB: `EXHAUSTED` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`PRODUCT_SEARCH`** | **`HEALTHY_SEARCH`** | 🟢 `HEALTHY` | *None* | $15\% - 28\%$ | $3600 - 4800\text{MB}$ | $10 - 35\text{ms}$ | $0\%$ | $150 - 250$ | Retries: 0 \| Queue: 5-25 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`PRODUCT_SEARCH`** | **`CACHE_MISS_STORM`** | 🟡 `DEGRADED` | `Redis` | $68\% - 84\%$ | $5900 - 7200\text{MB}$ | $1100 - 2300\text{ms}$ | $15\%$ | $130 - 210$ | Retries: 1-3 \| Queue: 50-140 \| DB: `HEALTHY` \| Cache: `MISS_STORM` \| Net: `JITTER` \| Ext API: `HEALTHY` |
+| **`USER_AUTH`** | **`SUCCESSFUL_LOGIN`** | 🟢 `HEALTHY` | *None* | $14\% - 26\%$ | $3500 - 4600\text{MB}$ | $12 - 38\text{ms}$ | $0\%$ | $140 - 220$ | Retries: 0 \| Queue: 5-20 \| DB: `HEALTHY` \| Cache: `HIT` \| Net: `OPTIMAL` \| Ext API: `HEALTHY` |
+| **`USER_AUTH`** | **`AUTH_SERVICE_DOWN`** | 🔴 `FAILURE` | `Authentication Service` | $70\% - 85\%$ | $6100 - 7300\text{MB}$ | $2100 - 3800\text{ms}$ | $30\%$ | $100 - 170$ | Retries: 2-4 \| Queue: 70-150 \| DB: `HEALTHY` \| Cache: `EVICT` \| Net: `JITTER` \| Ext API: `SLOW` |
+
+---
+
+### Detailed Workflow & Scenario Breakdowns
+
+#### Workflow 1: `ORDER_PLACEMENT` (Place Order & Checkout)
+- **Description**: Handles user checkout, order creation, discount matrix evaluation, inventory reservation, and order confirmation dispatch.
+- **Default Service Topology Chain**: `User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Inventory Service` $\rightarrow$ `Notification Service`
+
+##### Scenarios under `ORDER_PLACEMENT`:
+1. **`HEALTHY_CHECKOUT`** (Type: `HEALTHY`, Severity: `INFO`)
+   - **Root Cause**: `NONE` (System operates normally)
+   - **Telemetry Limits**: CPU $18\% - 32\%$, RAM $3800 - 5200\text{MB}$, Latency $15 - 45\text{ms}$, Failure Prob $0\%$, Traffic $120 - 200\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0$, Queue Length $5 - 25$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "Incoming POST request to place new order."
+     2. `Order Service` [`INFO`, Status 200, Delay 15ms]: "Executing SQL: INSERT INTO orders (user_id, total)."
+     3. `Payment Service` [`INFO`, Status 200, Delay 35ms]: "Processing credit card charge via payment gateway."
+     4. `Notification Service` [`INFO`, Status 200, Delay 20ms]: "Order confirmation email queued for dispatch."
+
+2. **`CPU_RUNAWAY_SPIKE`** (Type: `DEGRADED`, Severity: `WARN`)
+   - **Root Cause**: `Order Service`
+   - **Affected Services**: `Order Service`
+   - **Telemetry Limits**: CPU $82\% - 95\%$, RAM $4800 - 5800\text{MB}$, Latency $1200 - 2400\text{ms}$, Failure Prob $15\%$, Traffic $140 - 220\text{ users}$.
+   - **Parameter Matrix**: Retry Count $1 - 3$, Queue Length $45 - 120$, DB: `SLOW`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "Incoming POST request to place new order."
+     2. `Order Service` [`WARN`, Status 200, Delay 180ms]: "High CPU utilization during discount matrix calculation."
+     3. `Payment Service` [`INFO`, Status 200, Delay 40ms]: "Processing credit card charge via payment gateway."
+
+3. **`INVENTORY_HOLD_FAILURE`** (Type: `FAILURE`, Severity: `ERROR`)
+   - **Root Cause**: `Order Service`
+   - **Affected Services**: `Order Service`
+   - **Telemetry Limits**: CPU $35\% - 55\%$, RAM $4200 - 5400\text{MB}$, Latency $450 - 950\text{ms}$, Failure Prob $20\%$, Traffic $110 - 170\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0 - 1$, Queue Length $15 - 40$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "Incoming POST request to place new order."
+     2. `Order Service` [`WARN`, Status 200, Delay 30ms]: "Low inventory threshold detected for SKU-9921."
+     3. `Order Service` [`ERROR`, Status 400, Delay 85ms]: "Inventory reservation failed: Stock SKU-9921 exhausted."
+
+---
+
+#### Workflow 2: `PAYMENT_PROCESSING` (Payment Gateway Processing)
+- **Description**: Executes payment authorizations, invokes 3rd-party credit card gateways, handles network retries, and records transaction ledgers in PostgreSQL.
+- **Default Service Topology Chain**: `User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service` $\rightarrow$ `PostgreSQL` $\rightarrow$ `Notification Service`
+
+##### Scenarios under `PAYMENT_PROCESSING`:
+1. **`PAYMENT_SUCCESS`** (Type: `HEALTHY`, Severity: `INFO`)
+   - **Root Cause**: `NONE`
+   - **Telemetry Limits**: CPU $20\% - 35\%$, RAM $4000 - 5400\text{MB}$, Latency $25 - 65\text{ms}$, Failure Prob $0\%$, Traffic $130 - 210\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0$, Queue Length $8 - 30$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "Initiating payment authorization."
+     2. `Payment Service` [`INFO`, Status 200, Delay 45ms]: "Payment gateway authorized transaction."
+     3. `PostgreSQL` [`INFO`, Status 200, Delay 15ms]: "Ledger transaction record committed."
+
+2. **`PAYMENT_GATEWAY_TIMEOUT`** (Type: `FAILURE`, Severity: `ERROR`)
+   - **Root Cause**: `Payment Service`
+   - **Affected Services**: `Payment Service`, `Order Service`, `User Service`
+   - **Telemetry Limits**: CPU $72\% - 88\%$, RAM $6400 - 7800\text{MB}$, Latency $2500 - 4800\text{ms}$, Failure Prob $25\%$, Traffic $100 - 180\text{ users}$.
+   - **Parameter Matrix**: Retry Count $2 - 5$, Queue Length $80 - 180$, DB: `HEALTHY`, Cache: `HIT`, Network: `CONGESTED`, External API: `SLOW`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "User initiated checkout process."
+     2. `Order Service` [`INFO`, Status 200, Delay 15ms]: "User initiated order placement."
+     3. `Payment Service` [`WARN`, Status 200, Delay 120ms]: "Payment gateway latency exceeding 3000ms threshold, initiating retry..."
+     4. `Payment Service` [`ERROR`, Status 504, Delay 220ms]: "Payment gateway timeout after 5000ms: Connection refused."
+     5. `Order Service` [`ERROR`, Status 400, Delay 30ms]: "Order payment failed. Reverting inventory hold."
+
+3. **`GATEWAY_CONNECTION_REFUSED`** (Type: `FAILURE`, Severity: `ERROR`)
+   - **Root Cause**: `Payment Service`
+   - **Affected Services**: `Payment Service`
+   - **Telemetry Limits**: CPU $60\% - 75\%$, RAM $5800 - 6800\text{MB}$, Latency $1800 - 3200\text{ms}$, Failure Prob $30\%$, Traffic $90 - 160\text{ users}$.
+   - **Parameter Matrix**: Retry Count $1 - 4$, Queue Length $60 - 130$, DB: `HEALTHY`, Cache: `HIT`, Network: `JITTER`, External API: `DOWN`.
+   - **Sequential Log Chain**:
+     1. `Payment Service` [`WARN`, Status 200, Delay 40ms]: "Gateway socket connection unstable."
+     2. `Payment Service` [`ERROR`, Status 502, Delay 150ms]: "Third party gateway socket closed unexpectedly."
+
+---
+
+#### Workflow 3: `DATABASE_OPERATIONS` (Database Access & Operations)
+- **Description**: Manages complex relational SQL transactions, indexing checks, and database connection pool allocation.
+- **Default Service Topology Chain**: `Order Service` $\rightarrow$ `Payment Service` $\rightarrow$ `PostgreSQL`
+
+##### Scenarios under `DATABASE_OPERATIONS`:
+1. **`HEALTHY_DB_QUERY`** (Type: `HEALTHY`, Severity: `INFO`)
+   - **Root Cause**: `NONE`
+   - **Telemetry Limits**: CPU $15\% - 28\%$, RAM $3600 - 4800\text{MB}$, Latency $8 - 25\text{ms}$, Failure Prob $0\%$, Traffic $160 - 240\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0$, Queue Length $4 - 20$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `Order Service` [`INFO`, Status 200, Delay 12ms]: "Indexed lookup query executed in 12ms."
+     2. `PostgreSQL` [`INFO`, Status 200, Delay 8ms]: "PostgreSQL connection pool healthy (4/50 active)."
+
+2. **`SLOW_DB_QUERY`** (Type: `DEGRADED`, Severity: `WARN`)
+   - **Root Cause**: `PostgreSQL`
+   - **Affected Services**: `PostgreSQL`
+   - **Telemetry Limits**: CPU $65\% - 82\%$, RAM $6200 - 7600\text{MB}$, Latency $1500 - 3100\text{ms}$, Failure Prob $12\%$, Traffic $120 - 190\text{ users}$.
+   - **Parameter Matrix**: Retry Count $1 - 2$, Queue Length $35 - 90$, DB: `SLOW`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `PostgreSQL` [`WARN`, Status 200, Delay 240ms]: "Sequential scan detected on unindexed table query."
+
+3. **`DATABASE_POOL_EXHAUSTION`** (Type: `CRITICAL`, Severity: `CRITICAL`)
+   - **Root Cause**: `PostgreSQL`
+   - **Affected Services**: `PostgreSQL`, `Payment Service`, `Order Service`
+   - **Telemetry Limits**: CPU $86\% - 97\%$, RAM $8900 - 9800\text{MB}$, Latency $3200 - 5500\text{ms}$, Failure Prob $35\%$, Traffic $80 - 150\text{ users}$.
+   - **Parameter Matrix**: Retry Count $3 - 6$, Queue Length $110 - 220$, DB: `EXHAUSTED`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `Order Service` [`INFO`, Status 200, Delay 0ms]: "Order status query requested."
+     2. `Payment Service` [`INFO`, Status 200, Delay 15ms]: "Fetching ledger history from database."
+     3. `PostgreSQL` [`WARN`, Status 200, Delay 120ms]: "PostgreSQL connection pool approaching capacity limits (48/50 active)."
+     4. `PostgreSQL` [`ERROR`, Status 500, Delay 350ms]: "Database query took too long: Pool client acquisition timeout."
+     5. `Payment Service` [`ERROR`, Status 500, Delay 50ms]: "Payment failed due to database connection timeout."
+     6. `Order Service` [`ERROR`, Status 500, Delay 30ms]: "Order query failed due to upstream database exhaustion."
+
+---
+
+#### Workflow 4: `PRODUCT_SEARCH` (Product Search & Discovery)
+- **Description**: Handles catalog browsing, product search indexing, and Redis cache lookups.
+- **Default Service Topology Chain**: `User Service` $\rightarrow$ `Search Service` $\rightarrow$ `Redis` $\rightarrow$ `Product Service`
+
+##### Scenarios under `PRODUCT_SEARCH`:
+1. **`HEALTHY_SEARCH`** (Type: `HEALTHY`, Severity: `INFO`)
+   - **Root Cause**: `NONE`
+   - **Telemetry Limits**: CPU $15\% - 28\%$, RAM $3600 - 4800\text{MB}$, Latency $10 - 35\text{ms}$, Failure Prob $0\%$, Traffic $150 - 250\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0$, Queue Length $5 - 25$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "User initiated product search query."
+     2. `Search Service` [`INFO`, Status 200, Delay 8ms]: "Cache hit in Redis cluster. Returning cached products."
+     3. `Product Service` [`INFO`, Status 200, Delay 12ms]: "Retrieved 24 products for catalog view."
+
+2. **`CACHE_MISS_STORM`** (Type: `DEGRADED`, Severity: `WARN`)
+   - **Root Cause**: `Redis`
+   - **Affected Services**: `Redis`, `Product Service`
+   - **Telemetry Limits**: CPU $68\% - 84\%$, RAM $5900 - 7200\text{MB}$, Latency $1100 - 2300\text{ms}$, Failure Prob $15\%$, Traffic $130 - 210\text{ users}$.
+   - **Parameter Matrix**: Retry Count $1 - 3$, Queue Length $50 - 140$, DB: `HEALTHY`, Cache: `MISS_STORM`, Network: `JITTER`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `Search Service` [`WARN`, Status 200, Delay 140ms]: "Cache miss storm on hot product key: redis-cluster-01."
+
+---
+
+#### Workflow 5: `USER_AUTH` (User Authentication)
+- **Description**: Manages user authentication, password verification, JWT session token creation, and token revocation.
+- **Default Service Topology Chain**: `User Service` $\rightarrow$ `Authentication Service` $\rightarrow$ `Redis`
+
+##### Scenarios under `USER_AUTH`:
+1. **`SUCCESSFUL_LOGIN`** (Type: `HEALTHY`, Severity: `INFO`)
+   - **Root Cause**: `NONE`
+   - **Telemetry Limits**: CPU $14\% - 26\%$, RAM $3500 - 4600\text{MB}$, Latency $12 - 38\text{ms}$, Failure Prob $0\%$, Traffic $140 - 220\text{ users}$.
+   - **Parameter Matrix**: Retry Count $0$, Queue Length $5 - 20$, DB: `HEALTHY`, Cache: `HIT`, Network: `OPTIMAL`, External API: `HEALTHY`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "User login request received."
+     2. `Authentication Service` [`INFO`, Status 200, Delay 18ms]: "JWT token signed and session established."
+
+2. **`AUTH_SERVICE_DOWN`** (Type: `FAILURE`, Severity: `ERROR`)
+   - **Root Cause**: `Authentication Service`
+   - **Affected Services**: `Authentication Service`, `User Service`
+   - **Telemetry Limits**: CPU $70\% - 85\%$, RAM $6100 - 7300\text{MB}$, Latency $2100 - 3800\text{ms}$, Failure Prob $30\%$, Traffic $100 - 170\text{ users}$.
+   - **Parameter Matrix**: Retry Count $2 - 4$, Queue Length $70 - 150$, DB: `HEALTHY`, Cache: `EVICT`, Network: `JITTER`, External API: `SLOW`.
+   - **Sequential Log Chain**:
+     1. `User Service` [`INFO`, Status 200, Delay 0ms]: "User login request received."
+     2. `Authentication Service` [`WARN`, Status 200, Delay 90ms]: "Auth service verification delay exceeding 1500ms."
+     3. `Authentication Service` [`ERROR`, Status 500, Delay 190ms]: "Auth service secret key verification failure."
 
 ---
 
