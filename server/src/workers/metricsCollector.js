@@ -55,5 +55,5 @@ export const startMetricsCollector = () => {
     } catch (error) {
       console.error('[Worker] Error inserting metrics into database:', error.message);
     }
-  }, 10000);
+  }, 3000);
 };

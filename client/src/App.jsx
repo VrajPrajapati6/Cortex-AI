@@ -9,6 +9,7 @@ import { IncidentRcaModal } from "./components/IncidentRcaModal";
 import ServiceHealthMap from "./components/ServiceHealthMap";
 import TopologyGraph from "./components/TopologyGraph";
 import { TraceExplorerModal } from "./components/TraceExplorerModal";
+import { MlPredictions } from "./components/MlPredictions";
 
 const socket = io("http://localhost:5000");
 
@@ -22,6 +23,7 @@ export default function App() {
 
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [selectedTraceId, setSelectedTraceId] = useState(null);
+  const [mlData, setMlData] = useState(null);
 
   // Filters & Pagination State
   const [selectedLevel, setSelectedLevel] = useState("ALL");
@@ -183,10 +185,15 @@ export default function App() {
     socket.on("new_metrics", handleNewMetrics);
     socket.on("incident_update", handleIncidentUpdate);
 
+    socket.on("ml_prediction", (data) => {
+      setMlData(data);
+    });
+
     return () => {
       socket.off("new_log", handleNewLog);
       socket.off("new_metrics", handleNewMetrics);
       socket.off("incident_update", handleIncidentUpdate);
+      socket.off("ml_prediction");
     };
   }, [
     selectedIncidentId,
@@ -236,6 +243,7 @@ export default function App() {
           ) : (
             /* Normal Live Monitoring View */
             <>
+              <MlPredictions mlData={mlData} />
               <SummaryCards summary={summary} />
 
               <ServiceHealthMap />

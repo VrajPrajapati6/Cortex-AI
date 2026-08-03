@@ -63,5 +63,5 @@ export const startLatencyAggregator = () => {
     } catch (err) {
       console.error('[Worker] Error aggregating latencies:', err.message);
     }
-  }, 60000); // run every 1 minute
+  }, 3000); // run every 1 minute
 };

@@ -4,6 +4,9 @@ export const initDb = async () => {
   try {
     console.log('[Database] Checking and initializing database schema...');
 
+    // Enable pgvector extension
+    await pool.query('CREATE EXTENSION IF NOT EXISTS vector;');
+
     // 1. logs table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS logs (
@@ -69,6 +72,18 @@ export const initDb = async () => {
         resolution_reason TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         resolved_at TIMESTAMPTZ
+      );
+    `);
+
+    // 5. runbooks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS runbooks (
+        id SERIAL PRIMARY KEY,
+        service VARCHAR(255) NOT NULL,
+        incident_type VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        embedding vector(3072)
       );
     `);
 

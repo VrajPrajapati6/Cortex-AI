@@ -318,20 +318,24 @@ Tracks system outage lifecycles.
 
 ## 7. Background Telemetry Workers
 
-Cortex uses three background scripts ("Workers") running continuously on the server:
+Cortex uses four background scripts ("Workers") running continuously on the server, perfectly synchronized to a 3-second heartbeat to provide lightning-fast UI updates:
 
 ### 1. The Log Generator (`logGenerator.js`)
-- **Interval**: Runs every **10 seconds**.
+- **Interval**: Runs every **3 seconds**.
 - **Function**: Executes 2 complete user interaction request batches per tick driven by active Workflow $\rightarrow$ Scenario state.
-- **Trace Tree Math**: Generates shared `request_id` hashes, assigns parent-child `span_id` references, staggers start times, and dynamically calculates parent response times so child durations are cleanly encapsulated within parent execution spans.
+- **Trace Tree Math**: Generates shared `request_id` hashes, assigns parent-child `span_id` references, and staggers start times.
 
 ### 2. The Metrics Collector (`metricsCollector.js`)
-- **Interval**: Runs every **10 seconds**.
-- **Function**: Fetches synthetic CPU % and Memory MB metrics from `scenarioEngine.getCurrentTelemetryState()`, applies EMA smoothing, writes snapshots to `system_metrics`, and streams live updates via WebSockets.
+- **Interval**: Runs every **3 seconds**.
+- **Function**: Fetches synthetic CPU % and Memory MB metrics from `scenarioEngine`. Because both logs and metrics are mathematically correlated to the exact same active scenario state, this creates highly realistic cause-and-effect data.
 
 ### 3. The Latency Aggregator (`latencyAggregator.js`)
-- **Interval**: Runs every **60 seconds**.
-- **Function**: Aggregates raw logs from the preceding 60 seconds, groups by service, computes exact **P95 and P99 latencies** and error rates, and updates `service_metrics` baselines.
+- **Interval**: Runs every **3 seconds**.
+- **Function**: Aggregates raw logs from the preceding window, computes exact **P95 and P99 latencies**, and updates `service_metrics` baselines.
+
+### 4. The ML Inference Worker (`mlInferenceWorker.js`)
+- **Interval**: Runs every **3 seconds**.
+- **Function**: Extracts 44 exact features (CPU trends, latency, error logs) from the current window, sends them to the Python FastAPI microservice for AI prediction, and broadcasts the XGBoost inference directly to the React dashboard over Socket.io.
 
 ---
 
@@ -344,12 +348,22 @@ Renders real-time microservice health based on rolling error rates and latency v
 - 🔴 **Critical**: Error rate $> 5\%$ OR latency $> 5\times$ baseline.
 
 ### B. Topology Dependency Graph with Pulsing Failure Edges
-- Draws an interactive SVG map of microservice dependencies (`User Service` $\rightarrow$ `Order Service` $\rightarrow$ `Payment Service` $\rightarrow$ `Redis` / `PostgreSQL`).
+- Draws an interactive SVG map of all 10 microservices.
+- **Distributed Tracing vs Static UI**: While real-world systems use OpenTelemetry and `parent_span_id` headers to discover these maps dynamically, Cortex currently hardcodes the coordinates in `TopologyGraph.jsx` for beautiful UI rendering, while strictly simulating real distributed tracing `span_id` propagation under the hood!
 - **Active Failure Propagation Edges**: If an error spreads between two services within the last 60 seconds, the connecting edge **glows bright crimson red and pulses in real time**, indicating the active blast radius of the outage.
 
 ---
 
-## 9. Mathematical Root Cause Analysis (RCA) Engine
+## 9. Machine Learning Early Warning System (AIOps)
+
+To take observability to the next level, Cortex features a fully integrated **AI/ML Inference Pipeline** built with Python and FastAPI. 
+1. **The Python Engine**: A lightweight microservice (`api.py`) runs XGBoost models loaded from pre-trained `.pkl` artifacts. It handles categorical encoding exactly as it was trained.
+2. **Instant Correlation**: Because the `scenarioEngine` mathematically drives both the CPU usage and Log errors simultaneously, the ML model can confidently detect anomalies by identifying correlated spikes across the 44-feature matrix.
+3. **Imminent Incident Prediction**: If the system starts degrading, the model instantly predicts the upcoming disaster (e.g., `CPU` exhaustion, `MEMORY` leak, or cascading `LOG` failure) seconds or minutes before the threshold is actually breached.
+
+---
+
+## 10. Mathematical Root Cause Analysis (RCA) Engine
 
 When an incident occurs, `rcaService.js` executes a deterministic RCA analysis across all services involved in the outage window. The engine is **100% generic** and evaluates raw database telemetry without hardcoded scenario shortcuts.
 
@@ -365,25 +379,34 @@ Evaluates candidate services using a 5-rule rubric:
 $$\text{Total Score} = \text{FirstFail (30)} + \text{Upstream (25)} + \text{Propagation (40+25)} + \text{LatencySpike (20)}$$
 
 1. **First to Fail (+30 pts)**: Service logged the chronologically earliest `ERROR` log in the isolation window.
-2. **Upstream Dependency Tree Position (+25 pts)**: Uses deep recursive graph traversal ([evidenceService.js](file:///d:/Cortex/server/src/services/evidenceService.js)) down `dependencies.js`. Any deep underlying dependency (`Payment Service`, `PostgreSQL`, `Redis`) earns **+25 points**.
+2. **Upstream Dependency Tree Position (+25 pts)**: Uses deep recursive graph traversal down `dependencies.js`. Any deep underlying dependency earns **+25 points**.
 3. **Downstream Error Propagation (+40 pts)**: Service failure traveled upward and broke calling upstream services.
 4. **Propagation Multiplier (+5 to +25 pts)**: $+5$ points per impacted downstream service (capped at 5 services).
 5. **Latency Degradation (+20 pts)**: Service latency spiked $>2\times$ its 15-minute baseline.
 
 ---
 
-## 10. Microservice & Incident Log Explorer
+## 11. Cortex Copilot (RAG Vector Database AI)
+
+Cortex integrates a true **Retrieval-Augmented Generation (RAG)** Chatbot to assist on-call engineers.
+- **Neon `pgvector` Database**: Instead of loading runbooks into memory, Cortex uses PostgreSQL's native `vector` extension. Our `seedRunbooks.js` script converts company incident Markdown runbooks into 3072-dimensional embeddings using the new `@google/genai` SDK (`models/gemini-embedding-001`), storing them securely in Neon DB.
+- **Context-Aware Retrieval**: When an incident occurs, the Copilot reads the Root Cause Service and executes a **Cosine Similarity Search (`<=>`)** against the Vector DB, retrieving the exact mathematical match for the failure.
+- **LLM Augmented Generation**: `gemini-3.6-flash` reads the retrieved runbook and generates a conversational response containing the exact terminal commands (AWS CLI, `kubectl`) needed to remediate the outage.
+- **Robust Fallback Engine**: If the Gemini API key is missing or hits a rate limit (e.g. 429 Quota Exceeded), the backend automatically falls back to a deterministic 3072-dimension array simulator and simulated chat responses, guaranteeing the RAG architecture can still be demonstrated flawlessly in a local portfolio environment.
+
+---
+
+## 12. Microservice & Incident Log Explorer
 
 The dashboard provides a log exploration table supporting both global live streaming and isolated incident window trails:
 - **Real-Time Keyword Search**: Search across log messages, Request IDs, service names, and endpoints.
 - **Log Level Filters**: Filter by `ALL`, `INFO`, `WARN`, `ERROR`, or `DEBUG`.
-- **Service Name Filter**: Target specific microservices (`Payment Service`, `Order Service`, `PostgreSQL`, etc.).
+- **Service Name Filter**: Target specific microservices.
 - **Event Type Filter**: Filter by category (`API_REQUEST`, `DATABASE_QUERY`, `PAYMENT`, `CACHE_ACCESS`, `AUTH`).
-- **Single-Row Controls Layout**: Header layout separates title and record counts vertically while aligning all filter dropdowns cleanly in a single horizontal row.
 
 ---
 
-## 11. Incident Impact Diff & Distributed Trace Explorer
+## 13. Incident Impact Diff & Distributed Trace Explorer
 
 ### Incident Impact Diff (Before vs. During)
 Compares the root cause service's 15-minute pre-incident baseline metrics to active incident metrics, displaying percentage shifts (e.g. `P95 Latency increased by +2233%`).
@@ -396,7 +419,7 @@ Clicking any `Request ID` opens a modal rendering a horizontal Gantt chart:
 
 ---
 
-## 12. Codebase Directory Structure
+## 14. Codebase Directory Structure
 
 ```text
 Cortex Monorepo Structure
@@ -405,6 +428,7 @@ Cortex Monorepo Structure
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Header.jsx                 # Top bar & live WebSocket status
+│   │   │   ├── MlPredictions.jsx          # Live AI Early Warning widget
 │   │   │   ├── SummaryCards.jsx           # Telemetry count, CPU load, RAM, Error rate
 │   │   │   ├── MetricsCharts.jsx          # Live CPU & Memory Recharts area graphs
 │   │   │   ├── ServiceHealthMap.jsx       # Grid of microservice SLO indicators
@@ -412,49 +436,48 @@ Cortex Monorepo Structure
 │   │   │   ├── LogsTable.jsx              # Microservice & Incident log trail explorer
 │   │   │   ├── IncidentsList.jsx          # Outage history sidebar cards
 │   │   │   ├── IncidentRcaModal.jsx       # Root cause diagnostic modal & impact diff
-│   │   │   └── TraceExplorerModal.jsx    # Waterfall Gantt chart for distributed tracing
+│   │   │   ├── TraceExplorerModal.jsx     # Waterfall Gantt chart for distributed tracing
+│   │   │   └── CortexCopilot.jsx          # Floating RAG AI Chatbot UI
 │   │   ├── App.jsx                        # Main dashboard state & WebSockets
 │   │   └── main.jsx                       # Entry point
 │
 └── server/ (Node.js Backend)
     ├── src/
+    │   ├── ml/
+    │   │   ├── api.py                     # Python FastAPI Inference Engine
+    │   │   └── models/                    # Pickled XGBoost models & Encoders
     │   ├── config/
     │   │   ├── db.js                      # Neon PostgreSQL pool setup
-    │   │   ├── initDb.js                  # Auto-executes CREATE TABLE IF NOT EXISTS on boot
+    │   │   ├── initDb.js                  # Auto-executes CREATE EXTENSION vector and creates tables
     │   │   ├── dependencies.js            # Microservice topology mapping
-    │   │   ├── env.config.js              # Environment variables
+    │   │   ├── env.config.js              # Environment variables loader
     │   │   └── socket.js                  # Socket.io WebSocket server
     │   ├── scenario/                      # Unified Scenario Telemetry Engine
-    │   │   ├── scenario.constants.js      # Timing ratios, durations, phase definitions
-    │   │   ├── scenario.types.js          # JSDoc interfaces
-    │   │   ├── workflow.registry.js       # Business Workflows Registry
-    │   │   ├── scenario.registry.js       # Workflow-Owned Scenarios & Telemetry Matrix
-    │   │   ├── scenario.state.js          # 2-Step Hierarchy State & EMA Smoothing
-    │   │   ├── scenario.engine.js         # Request Batching & Trace Tree Calculations
-    │   │   ├── scenario.utils.js          # Math helpers & cryptographic request IDs
-    │   │   └── index.js                   # Barrel exports
-    │   ├── controllers/                   # API handlers (Health, Topology, Incidents, Traces)
+    │   ├── controllers/                   # API handlers (Health, Topology, Incidents, Traces, Chat)
     │   ├── services/                      # Modular Business & Diagnostic Logic
-    │   │   ├── rcaService.js              # RCA execution & propagation chain traversal
-    │   │   ├── scoringService.js          # 140-Point evidence scoring algorithm
-    │   │   ├── evidenceService.js         # Gathers 5 diagnostic rubric metrics with deep DFS graph
-    │   │   ├── propagationService.js      # Detects active error edges across requests
-    │   │   └── correlationService.js      # Fetches log windows & groups spans by request_id
+    │   │   └── ragService.js              # Performs Cosine Similarity DB Searches & LLM Invocation
     │   ├── workers/
-    │   │   ├── logGenerator.js            # Executes scenario-driven trace tree request batches
-    │   │   ├── metricsCollector.js        # Reads scenario state with EMA trend smoothing
-    │   │   └── latencyAggregator.js       # Calculates P95/P99 latency baselines (60s)
+    │   │   ├── logGenerator.js            # Generates trace tree request batches
+    │   │   ├── metricsCollector.js        # Reads scenario state & updates metrics
+    │   │   ├── latencyAggregator.js       # Calculates P95/P99 latencies
+    │   │   └── mlInferenceWorker.js       # Bridges Node.js and Python for ML
+    │   ├── data/
+    │   │   └── runbooks.json              # Company remediation knowledge base
+    │   ├── scripts/
+    │   │   └── seedRunbooks.js            # Utility to generate embeddings and seed Vector DB
     │   ├── app.js                         # Express app configuration & middleware
     │   └── server.js                      # Entry point (App listen, initDb, launch workers)
 ```
 
 ---
 
-## 13. Setup & Local Installation Guide
+## 15. Setup & Local Installation Guide
 
 ### Prerequisites
 - Node.js (v18 or higher)
+- Python (3.9 or higher)
 - A Neon PostgreSQL Database connection string (`postgresql://...`)
+- (Optional) A Gemini API Key for dynamic LLM generation
 
 ### 1. Configure Backend Environment
 Create a `.env` file inside `server/`:
@@ -462,9 +485,19 @@ Create a `.env` file inside `server/`:
 PORT=5000
 NODE_ENV=development
 DATABASE_URL=postgresql://[user]:[password]@[neon-hostname]/[dbname]?sslmode=require
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### 2. Run Backend Server (Terminal 1)
+### 2. Run the Machine Learning API (Terminal 1)
+You must start the Python FastAPI inference server before the Node.js backend.
+```bash
+cd server/src/ml
+pip install -r requirements.txt
+python api.py
+```
+*Note: The ML API will start on `http://localhost:8000`. Leave this terminal running.*
+
+### 3. Run Backend Server (Terminal 2)
 ```bash
 cd server
 npm install
@@ -472,7 +505,7 @@ npm run dev
 ```
 *Note: The backend automatically executes `initDb.js` on boot, creating all 4 database tables (`logs`, `system_metrics`, `service_metrics`, `incidents`) if missing, and immediately starts data workers.*
 
-### 3. Run Frontend Dashboard (Terminal 2)
+### 4. Run Frontend Dashboard (Terminal 3)
 ```bash
 cd client
 npm install

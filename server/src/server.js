@@ -4,6 +4,7 @@ import { initDb } from './config/initDb.js';
 import { startLogGenerator } from './workers/logGenerator.js';
 import { startMetricsCollector } from './workers/metricsCollector.js';
 import { startLatencyAggregator } from './workers/latencyAggregator.js';
+import { startMlInferenceWorker } from './workers/mlInferenceWorker.js';
 import { initSocket } from './config/socket.js';
 
 const server = app.listen(config.port, async () => {
@@ -19,6 +20,7 @@ const server = app.listen(config.port, async () => {
   startLogGenerator();
   startMetricsCollector();
   startLatencyAggregator();
+  startMlInferenceWorker();
 });
 
 const handleShutdown = (signal) => {

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { MetricsCharts } from './MetricsCharts';
 import { LogsTable } from './LogsTable';
+import { CortexCopilot } from './CortexCopilot';
 
 export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [], onTraceSelect }) => {
   const [rcaData, setRcaData] = useState(null);
@@ -52,8 +53,16 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [],
   const timeline = rcaData?.timeline || [];
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col mb-6 relative">
       
+      {/* Floating Copilot AI */}
+      <CortexCopilot 
+        incidentContext={{ 
+          rootCauseService: rcaData?.causalGraph?.rootCause || incident?.affectedService, 
+          status: incident?.status 
+        }} 
+      />
+
       {/* Top Banner Navigation */}
       <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">

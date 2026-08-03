@@ -75,5 +75,5 @@ export const startLogGenerator = () => {
         }
       }
     }
-  }, 10000);
+  }, 3000);
 };
