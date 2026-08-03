@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
 const fixedPositions = {
-  'User Service': { x: 100, y: 150 },
-  'Order Service': { x: 300, y: 150 },
-  'Payment Service': { x: 500, y: 150 },
-  'Redis': { x: 750, y: 50 },
-  'PostgreSQL': { x: 750, y: 250 },
+  'User Service': { x: 80, y: 175 },
+  'Search Service': { x: 280, y: 60 },
+  'Authentication Service': { x: 280, y: 140 },
+  'Order Service': { x: 280, y: 240 },
+  'Product Service': { x: 500, y: 60 },
+  'Payment Service': { x: 500, y: 240 },
+  'Inventory Service': { x: 500, y: 320 },
+  'Redis': { x: 750, y: 100 },
+  'PostgreSQL': { x: 750, y: 240 },
+  'Notification Service': { x: 750, y: 320 }
 };
 
 const getStatusColor = (status) => {
