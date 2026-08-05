@@ -4,6 +4,46 @@ Welcome to **Cortex**! This document serves as the ultimate, exhaustive guide to
 
 ---
 
+## Dashboard
+
+![Dashboard](./assets/1.png)
+
+### ML Predictions and Anomaly Detection
+![ML Predictions and Anomaly Detection](./assets/2.png)
+
+### Live Service Map and Stats
+![Live Service Map and Stats](./assets/3.png)
+
+### Live Service Dependency Graph
+![Live Service Dependency Graph](./assets/4.png)
+
+### CPU Usage and Memory Usage
+![CPU Usage and Memory Usage](./assets/5.png)
+
+### Live Logs
+![Live Logs](./assets/6.png)
+
+### Incident Window
+![Incident Window](./assets/7.png)
+
+---
+
+## Incident
+
+![Incident](./assets/8.png)
+
+### Root Cause Analysis
+![Root Cause Analysis](./assets/9.png)
+
+### Before vs During Incident Impact
+![Before vs During Incident Impact](./assets/10.png)
+
+### RAG
+![RAG 1](./assets/11.png)
+![RAG 2](./assets/12.png)
+
+---
+
 ## 1. The Core Problem: Why Does Cortex Exist?
 
 In modern software engineering, monolithic applications are often broken down into dozens (or hundreds) of smaller pieces called **Microservices** (for example: a User Service, an Order Service, a Payment Service, an Authentication Service, a Redis cache, and a PostgreSQL database). 
