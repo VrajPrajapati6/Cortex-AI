@@ -27,6 +27,7 @@ export default function App() {
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [selectedTraceId, setSelectedTraceId] = useState(null);
   const [mlData, setMlData] = useState(null);
+  const [showMobileIncidents, setShowMobileIncidents] = useState(false);
 
   // Filters & Pagination State
   const [selectedLevel, setSelectedLevel] = useState("ALL");
@@ -43,7 +44,12 @@ export default function App() {
       const incRes = await fetch(`${API_BASE_URL}/api/incidents`);
       if (incRes.ok) {
         const incData = await incRes.json();
-        setIncidents(incData.data.incidents || []);
+        const freshIncidents = incData.data.incidents || [];
+        setIncidents(freshIncidents);
+
+        if (selectedIncidentId && !freshIncidents.some(i => i.id === selectedIncidentId)) {
+          setSelectedIncidentId(null);
+        }
       }
 
       if (selectedIncidentId) {
@@ -138,7 +144,10 @@ export default function App() {
           newLog.event_type === selectedEventType;
 
         if (matchesLevel && matchesService && matchesType) {
-          setLogs((prev) => [newLog, ...prev].slice(0, limit));
+          setLogs((prevLogs) => {
+            if (prevLogs.some((l) => l.id === newLog.id)) return prevLogs;
+            return [newLog, ...prevLogs.slice(0, limit - 1)];
+          });
         }
       }
       setSummary((prev) => {
@@ -187,6 +196,7 @@ export default function App() {
     socket.on("new_log", handleNewLog);
     socket.on("new_metrics", handleNewMetrics);
     socket.on("incident_update", handleIncidentUpdate);
+    socket.on("logs_pruned", fetchDashboardData);
 
     socket.on("ml_prediction", (data) => {
       setMlData(data);
@@ -196,6 +206,7 @@ export default function App() {
       socket.off("new_log", handleNewLog);
       socket.off("new_metrics", handleNewMetrics);
       socket.off("incident_update", handleIncidentUpdate);
+      socket.off("logs_pruned", fetchDashboardData);
       socket.off("ml_prediction");
     };
   }, [
@@ -213,7 +224,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <Header
         systemStatus={
           summary?.systemStatus ||
@@ -227,8 +238,35 @@ export default function App() {
         onOpenLanding={() => setCurrentView("landing")}
       />
 
-      <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-6 flex gap-6">
-        {/* Sidebar: Incidents */}
+      <main className="flex-1 w-full max-w-screen-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col md:flex-row gap-4 sm:gap-6">
+        {/* Mobile Incidents Bar / Accordion */}
+        <div className="block md:hidden bg-slate-900/90 border border-slate-800 rounded-lg p-3 shadow-md backdrop-blur-md">
+          <button
+            onClick={() => setShowMobileIncidents(!showMobileIncidents)}
+            className="w-full flex items-center justify-between text-xs font-bold text-slate-200 uppercase tracking-wider"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <span>Incidents ({incidents.length})</span>
+            </div>
+            <span className="text-slate-400 text-xs font-semibold">{showMobileIncidents ? '▲ Hide' : '▼ View Incidents'}</span>
+          </button>
+
+          {showMobileIncidents && (
+            <div className="mt-3 max-h-80 overflow-y-auto border-t border-slate-800 pt-2">
+              <IncidentsList
+                incidents={incidents}
+                selectedIncidentId={selectedIncidentId}
+                onSelect={(id) => {
+                  setSelectedIncidentId(id);
+                  setShowMobileIncidents(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Sidebar: Incidents */}
         <div className="w-80 flex-shrink-0 hidden md:block sticky top-6 h-[calc(100vh-120px)]">
           <IncidentsList
             incidents={incidents}

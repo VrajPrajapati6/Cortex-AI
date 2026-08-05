@@ -46,31 +46,31 @@ const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
           </linearGradient>
         </defs>
 
-        <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="#e5e7eb" strokeDasharray="3 3" />
-        <line x1={paddingLeft} y1={paddingTop + chartHeight / 2} x2={width - paddingRight} y2={paddingTop + chartHeight / 2} stroke="#e5e7eb" strokeDasharray="3 3" />
-        <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#e5e7eb" />
+        <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="#334155" strokeDasharray="3 3" />
+        <line x1={paddingLeft} y1={paddingTop + chartHeight / 2} x2={width - paddingRight} y2={paddingTop + chartHeight / 2} stroke="#334155" strokeDasharray="3 3" />
+        <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#334155" />
 
         {/* Y-axis Labels */}
-        <text x={paddingLeft - 5} y={paddingTop + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+        <text x={paddingLeft - 5} y={paddingTop + 4} textAnchor="end" className="text-[10px] fill-slate-400 font-mono">
           {Math.round(maxVal)}
         </text>
-        <text x={paddingLeft - 5} y={paddingTop + chartHeight / 2 + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+        <text x={paddingLeft - 5} y={paddingTop + chartHeight / 2 + 4} textAnchor="end" className="text-[10px] fill-slate-400 font-mono">
           {Math.round((maxVal + minVal) / 2)}
         </text>
-        <text x={paddingLeft - 5} y={height - paddingBottom + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+        <text x={paddingLeft - 5} y={height - paddingBottom + 4} textAnchor="end" className="text-[10px] fill-slate-400 font-mono">
           {minVal}
         </text>
 
         {/* X-axis Labels */}
         {data.length > 0 && (
           <>
-            <text x={paddingLeft} y={height - 10} textAnchor="start" className="text-[10px] fill-gray-400 font-mono">
+            <text x={paddingLeft} y={height - 10} textAnchor="start" className="text-[10px] fill-slate-400 font-mono">
               {data[0].time}
             </text>
-            <text x={paddingLeft + chartWidth / 2} y={height - 10} textAnchor="middle" className="text-[10px] fill-gray-400 font-mono">
+            <text x={paddingLeft + chartWidth / 2} y={height - 10} textAnchor="middle" className="text-[10px] fill-slate-400 font-mono">
               {data[Math.floor(data.length / 2)].time}
             </text>
-            <text x={width - paddingRight} y={height - 10} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+            <text x={width - paddingRight} y={height - 10} textAnchor="end" className="text-[10px] fill-slate-400 font-mono">
               {data[data.length - 1].time}
             </text>
           </>
@@ -95,10 +95,10 @@ const SvgAreaChart = ({ data, dataKey, color, unit, height = 200 }) => {
 
       {hoveredPoint && (
         <div 
-          className="absolute z-20 bg-slate-900 text-white text-xs font-mono p-2 rounded shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          className="absolute z-20 bg-slate-950 border border-slate-700 text-white text-xs font-mono p-2 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
           style={{ left: `${(hoveredPoint.x / width) * 100}%`, top: '35%' }}
         >
-          <div className="text-gray-400 text-[10px]">{hoveredPoint.label}</div>
+          <div className="text-slate-400 text-[10px]">{hoveredPoint.label}</div>
           <div className="font-bold mt-0.5">
             {hoveredPoint.value} {unit}
           </div>
@@ -119,21 +119,21 @@ export const MetricsCharts = ({ metrics = [] }) => {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-800 shadow-md flex flex-col">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-emerald-600" />
+          <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-emerald-400" />
             CPU Usage (%)
           </h3>
         </div>
         <SvgAreaChart data={chartData} dataKey="cpu" color="#10b981" unit="%" />
       </div>
 
-      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col">
+      <div className="bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-800 shadow-md flex flex-col">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-blue-600" />
+          <h3 className="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-blue-400" />
             Memory Usage (MB)
           </h3>
         </div>

@@ -48,14 +48,14 @@ export const TopologyGraph = () => {
 
   if (nodes.length === 0) {
     return (
-      <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6 h-80 flex items-center justify-center text-gray-500 font-mono">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 h-80 flex items-center justify-center text-slate-400 font-mono shadow-md">
         {loading ? "Initializing Dynamic Topology..." : "Waiting for initial telemetry... (may take up to 60s)"}
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-md">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white tracking-wide">Live Service Dependency Graph</h2>
         <div className="flex items-center space-x-4 text-xs">

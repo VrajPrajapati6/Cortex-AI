@@ -6,7 +6,7 @@ import { runRCA, buildMainChain } from '../services/rcaService.js';
 export const getIncidents = async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM incidents ORDER BY created_at DESC LIMIT 50`
+      `SELECT * FROM incidents ORDER BY created_at DESC, id DESC LIMIT 50`
     );
     res.status(200).json({ status: 'SUCCESS', data: { incidents: result.rows } });
   } catch (error) {
@@ -232,12 +232,12 @@ export const getIncidentRCA = async (req, res, next) => {
     const rca = runRCA(logs, requestGroups, edgeCounts, affectedService, latencyInfo);
     let chain = buildMainChain(edgeCounts, rca.rootCause);
 
-    if ((incident.type === 'CPU' || incident.type === 'MEMORY') && rca.confidence === 0) {
+    if (rca.confidence === 0) {
       rca.rootCause = affectedService;
       rca.confidence = 75;
       chain = [affectedService];
       rca.evidence = {
-        latencySpike: true,
+        latencySpike: incident.type === 'CPU' || incident.type === 'MEMORY',
         errorCount: sCount[affectedService] || 0
       };
     }

@@ -28,7 +28,7 @@ const ServiceHealthMap = () => {
 
   if (services.length === 0) {
     return (
-      <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6 h-40 flex items-center justify-center text-gray-400 font-mono text-xs">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 h-40 flex items-center justify-center text-slate-400 font-mono text-xs shadow-md">
         {loading ? "Loading Service Map..." : "Waiting for initial telemetry... (may take up to 60s)"}
       </div>
     );
@@ -39,7 +39,7 @@ const ServiceHealthMap = () => {
   }
 
   return (
-    <div className="bg-[#0f1219] border border-gray-800 rounded-xl p-5 mb-6">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-md">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white tracking-wide">Live Service Map</h2>
         <div className="flex items-center space-x-4 text-xs">

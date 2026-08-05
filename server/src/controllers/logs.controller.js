@@ -57,7 +57,7 @@ export const getLogs = async (req, res, next) => {
         timestamp
       FROM logs
       ${whereClause}
-      ORDER BY timestamp DESC
+      ORDER BY timestamp DESC, id DESC
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
     `;
 

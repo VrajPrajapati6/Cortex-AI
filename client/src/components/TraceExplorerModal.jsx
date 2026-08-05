@@ -24,34 +24,34 @@ export const TraceExplorerModal = ({ requestId, onClose }) => {
   if (!requestId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-400" />
               Distributed Trace Explorer
             </h2>
-            <p className="text-sm text-gray-500 font-mono mt-1">Request: {requestId}</p>
+            <p className="text-sm text-slate-400 font-mono mt-1">Request: {requestId}</p>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6 bg-gray-50">
+        <div className="flex-1 overflow-auto p-6 bg-slate-950">
           {loading ? (
-            <div className="flex justify-center items-center h-40 text-gray-500">Loading trace data...</div>
+            <div className="flex justify-center items-center h-40 text-slate-400 font-mono">Loading trace data...</div>
           ) : !traceData?.flat_spans?.length ? (
-            <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-40 text-slate-400 font-mono">
               <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
               No trace data found for this request.
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-md">
               <WaterfallChart spans={traceData.flat_spans} roots={traceData.trace_tree} />
             </div>
           )}
@@ -80,36 +80,36 @@ const WaterfallChart = ({ spans, roots }) => {
   return (
     <div className="w-full">
       {/* Table Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+      <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-950 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wide">
         <div className="col-span-4 pl-2">Service / Endpoint</div>
         <div className="col-span-8 relative">
           Timeline ({totalDuration.toFixed(0)}ms)
-          <div className="absolute left-0 top-0 bottom-0 w-px bg-gray-300"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-800"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-px bg-slate-800"></div>
         </div>
       </div>
 
       {/* Spans */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-slate-800/80">
         {flattenedTree.map((span, idx) => {
           const leftPercent = totalDuration > 0 ? ((span.start_time - minTime) / totalDuration) * 100 : 0;
           const widthPercent = totalDuration > 0 ? (span.response_time_ms / totalDuration) * 100 : 100;
           
           const isError = span.level === 'ERROR' || span.status_code >= 500;
           const barColor = isError ? 'bg-rose-500' : 'bg-indigo-500';
-          const bgColor = isError ? 'bg-rose-50/30' : 'hover:bg-gray-50';
+          const bgColor = isError ? 'bg-rose-950/30' : 'hover:bg-slate-800/60';
 
           return (
             <div key={span.id || idx} className={`grid grid-cols-12 gap-4 px-4 py-3 items-center ${bgColor} transition-colors group`}>
               
               {/* Service Info */}
               <div className="col-span-4 flex items-start gap-2" style={{ paddingLeft: `${span.depth * 20}px` }}>
-                <Server className={`w-4 h-4 mt-0.5 ${isError ? 'text-rose-500' : 'text-gray-400'}`} />
+                <Server className={`w-4 h-4 mt-0.5 ${isError ? 'text-rose-400' : 'text-slate-400'}`} />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-semibold text-gray-900 truncate" title={span.service_name}>
+                  <span className="text-sm font-semibold text-slate-200 truncate" title={span.service_name}>
                     {span.service_name}
                   </span>
-                  <span className="text-xs text-gray-500 font-mono truncate" title={span.endpoint}>
+                  <span className="text-xs text-slate-400 font-mono truncate" title={span.endpoint}>
                     {span.endpoint}
                   </span>
                 </div>
@@ -121,7 +121,7 @@ const WaterfallChart = ({ spans, roots }) => {
                   {/* Grid lines */}
                   <div className="absolute inset-0 flex justify-between pointer-events-none opacity-20">
                     {[...Array(5)].map((_, i) => (
-                      <div key={i} className="w-px h-full bg-gray-400"></div>
+                      <div key={i} className="w-px h-full bg-slate-600"></div>
                     ))}
                   </div>
 
@@ -130,13 +130,13 @@ const WaterfallChart = ({ spans, roots }) => {
                     className={`absolute h-4 rounded-sm ${barColor} shadow-sm group-hover:brightness-110 transition-all`}
                     style={{ 
                       left: `${Math.max(0, leftPercent)}%`, 
-                      width: `${Math.max(0.5, widthPercent)}%`, // min-width 0.5% so very fast spans are visible
+                      width: `${Math.max(0.5, widthPercent)}%`,
                     }}
                   />
                   
                   {/* Duration Label */}
                   <div 
-                    className="absolute text-[10px] font-mono text-gray-600 font-semibold ml-2 whitespace-nowrap"
+                    className="absolute text-[10px] font-mono text-slate-300 font-semibold ml-2 whitespace-nowrap"
                     style={{ left: `${Math.min(100, leftPercent + widthPercent)}%` }}
                   >
                     {span.response_time_ms.toFixed(0)}ms

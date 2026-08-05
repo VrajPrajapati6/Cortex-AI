@@ -91,57 +91,57 @@ export const LogsTable = ({
 
   const getServiceBadgeStyle = (service) => {
     switch (service) {
-      case 'User Service': return 'bg-sky-50 text-sky-700 border-sky-200';
-      case 'Authentication Service': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'Product Service': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Inventory Service': return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Order Service': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'Payment Service': return 'bg-rose-50 text-rose-700 border-rose-200';
-      case 'Notification Service': return 'bg-teal-50 text-teal-700 border-teal-200';
-      case 'Search Service': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'User Service': return 'bg-sky-950/80 text-sky-300 border-sky-800/60';
+      case 'Authentication Service': return 'bg-purple-950/80 text-purple-300 border-purple-800/60';
+      case 'Product Service': return 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60';
+      case 'Inventory Service': return 'bg-amber-950/80 text-amber-300 border-amber-800/60';
+      case 'Order Service': return 'bg-indigo-950/80 text-indigo-300 border-indigo-800/60';
+      case 'Payment Service': return 'bg-rose-950/80 text-rose-300 border-rose-800/60';
+      case 'Notification Service': return 'bg-teal-950/80 text-teal-300 border-teal-800/60';
+      case 'Search Service': return 'bg-cyan-950/80 text-cyan-300 border-cyan-800/60';
+      default: return 'bg-slate-800 text-slate-300 border-slate-700';
     }
   };
 
   const getEventTypeBadgeStyle = (eventType) => {
     switch (eventType) {
       case 'API_REQUEST':
-      case 'API_RESPONSE': return 'bg-blue-50 text-blue-700';
-      case 'DATABASE_QUERY': return 'bg-cyan-50 text-cyan-700';
-      case 'DATABASE_ERROR': return 'bg-rose-100 text-rose-800 font-bold';
+      case 'API_RESPONSE': return 'bg-blue-950/80 text-blue-300';
+      case 'DATABASE_QUERY': return 'bg-cyan-950/80 text-cyan-300';
+      case 'DATABASE_ERROR': return 'bg-rose-950/80 text-rose-300 font-bold';
       case 'CACHE_ACCESS':
-      case 'CACHE_MISS': return 'bg-amber-50 text-amber-700';
-      case 'PAYMENT': return 'bg-emerald-50 text-emerald-700 font-bold';
-      case 'AUTHENTICATION': return 'bg-purple-50 text-purple-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'CACHE_MISS': return 'bg-amber-950/80 text-amber-300';
+      case 'PAYMENT': return 'bg-emerald-950/80 text-emerald-300 font-bold';
+      case 'AUTHENTICATION': return 'bg-purple-950/80 text-purple-300';
+      default: return 'bg-slate-800 text-slate-300';
     }
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full overflow-hidden">
+    <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-md flex flex-col h-full overflow-hidden">
 
       {/* Header & Filter Controls */}
-      <div className="p-3.5 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gray-50">
+      <div className="p-3 sm:p-3.5 border-b border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-900/90">
         <div className="flex flex-col">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider whitespace-nowrap">
+          <h2 className="text-xs sm:text-sm font-bold text-slate-200 uppercase tracking-wider whitespace-nowrap">
             {isIncidentView ? 'Incident Log Trail' : 'Microservice Logs Explorer'}
           </h2>
-          <span className="text-[11px] font-mono text-gray-500 font-medium">
+          <span className="text-[11px] font-mono text-slate-400 font-medium">
             {isIncidentView ? `±1 Min Isolation Window • (${displayedLogs.length} records)` : `(${pagination.total || logs.length} records)`}
           </span>
         </div>
 
-        {/* Filter Controls (Single Row Layout) */}
-        <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+        {/* Filter Controls (Responsive Wrapping Layout) */}
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
 
           {/* Log Level Filter */}
-          <div className="flex bg-white rounded-md border border-gray-300 overflow-hidden text-xs shadow-xs shrink-0">
+          <div className="flex bg-slate-800 rounded-md border border-slate-700 overflow-x-auto text-xs shadow-xs shrink-0 max-w-full">
             {levels.map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => { setCurrentLevel && setCurrentLevel(lvl); setPage && setPage(1); }}
-                className={`px-2 py-1 font-semibold transition-colors ${currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'
-                  } ${lvl !== 'ALL' ? 'border-l border-gray-200' : ''}`}
+                className={`px-2.5 py-1 font-semibold transition-colors ${currentLevel === lvl ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-700'
+                  } ${lvl !== 'ALL' ? 'border-l border-slate-700' : ''}`}
               >
                 {lvl}
               </button>
@@ -152,7 +152,7 @@ export const LogsTable = ({
           <select
             value={currentService}
             onChange={(e) => { setCurrentService && setCurrentService(e.target.value); setPage && setPage(1); }}
-            className="px-2 py-1 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer shrink-0 max-w-[135px] truncate"
+            className="px-2 py-1 text-xs font-mono border border-slate-700 rounded-md bg-slate-800 text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer grow sm:grow-0 max-w-[140px] truncate"
           >
             {servicesList.map(s => (
               <option key={s} value={s}>{s === 'ALL' ? 'All Services' : s}</option>
@@ -163,7 +163,7 @@ export const LogsTable = ({
           <select
             value={currentEventType}
             onChange={(e) => { setCurrentEventType && setCurrentEventType(e.target.value); setPage && setPage(1); }}
-            className="px-2 py-1 text-xs font-mono border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer shrink-0 max-w-[135px] truncate"
+            className="px-2 py-1 text-xs font-mono border border-slate-700 rounded-md bg-slate-800 text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs cursor-pointer grow sm:grow-0 max-w-[140px] truncate"
           >
             {eventTypesList.map(et => (
               <option key={et} value={et}>{et === 'ALL' ? 'All Event Types' : et}</option>
@@ -176,7 +176,7 @@ export const LogsTable = ({
             placeholder="Search logs / RequestID"
             value={currentSearch}
             onChange={(e) => { setCurrentSearch && setCurrentSearch(e.target.value); setPage && setPage(1); }}
-            className="px-2.5 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 w-44 font-mono shadow-xs shrink-0"
+            className="px-2.5 py-1 text-xs border border-slate-700 rounded-md bg-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-44 font-mono shadow-xs shrink-0"
           />
         </div>
       </div>
@@ -184,7 +184,7 @@ export const LogsTable = ({
       {/* Logs Table */}
       <div className="overflow-x-auto max-h-[600px]">
         <table className="w-full text-left border-collapse text-xs">
-          <thead className="bg-white border-b border-gray-200 text-gray-500 font-mono text-[11px] uppercase tracking-wider sticky top-0 z-10">
+          <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 font-mono text-[11px] uppercase tracking-wider sticky top-0 z-10">
             <tr>
               <th className="py-3 px-3 w-40 font-medium">Timestamp</th>
               <th className="py-3 px-3 w-36 font-medium">Service Name</th>
@@ -195,11 +195,11 @@ export const LogsTable = ({
               <th className="py-3 px-3 font-medium">Message</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-gray-700 font-mono">
+          <tbody className="divide-y divide-slate-800/80 text-slate-300 font-mono">
             {displayedLogs.length > 0 ? (
-              displayedLogs.map((log) => (
-                <tr key={log.id || Math.random()} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-2.5 px-3 whitespace-nowrap text-gray-500 text-[11px]">
+              displayedLogs.map((log, idx) => (
+                <tr key={log.id ? `log-${log.id}` : `log-${log.timestamp}-${log.request_id || idx}`} className="hover:bg-slate-800/60 transition-colors">
+                  <td className="py-2.5 px-3 whitespace-nowrap text-slate-400 text-[11px]">
                     {new Date(log.timestamp).toLocaleString([], {
                       month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
                     })}
@@ -214,8 +214,8 @@ export const LogsTable = ({
                       onClick={() => onTraceSelect && onTraceSelect(log.request_id || log.requestId)}
                       disabled={!onTraceSelect}
                       className={`px-2 py-0.5 rounded border text-[10px] font-bold font-mono transition-colors ${onTraceSelect
-                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 cursor-pointer'
-                          : 'bg-gray-100 border-gray-300 text-gray-800'
+                          ? 'bg-indigo-950/80 border-indigo-800/80 text-indigo-300 hover:bg-indigo-900/80 cursor-pointer'
+                          : 'bg-slate-800 border-slate-700 text-slate-300'
                         }`}
                       title={onTraceSelect ? "View Distributed Trace Waterfall" : ""}
                     >
@@ -228,30 +228,31 @@ export const LogsTable = ({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.level === 'ERROR' ? 'bg-red-100 text-red-700' :
-                        log.level === 'WARN' ? 'bg-yellow-100 text-yellow-800' :
-                          log.level === 'INFO' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-600'
-                      }`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      log.level === 'ERROR' ? 'bg-rose-950/80 text-rose-300 border-rose-800/60' :
+                      log.level === 'WARN' ? 'bg-amber-950/80 text-amber-300 border-amber-800/60' :
+                      log.level === 'INFO' ? 'bg-blue-950/80 text-blue-300 border-blue-800/60' :
+                      'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}>
                       {log.level}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap text-gray-600 text-[11px]">
+                  <td className="py-2.5 px-3 whitespace-nowrap text-slate-400 text-[11px]">
                     {log.endpoint || '/api'}
                     {log.status_code && (
-                      <span className={`ml-1 text-[10px] font-bold ${log.status_code >= 400 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <span className={`ml-1 text-[10px] font-bold ${log.status_code >= 400 ? 'text-rose-400' : 'text-emerald-400'}`}>
                         ({log.status_code})
                       </span>
                     )}
                   </td>
-                  <td className="py-2.5 px-3 text-gray-900 break-all leading-relaxed">
+                  <td className="py-2.5 px-3 text-slate-200 break-all leading-relaxed">
                     {log.message}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500 font-mono">
+                <td colSpan={7} className="py-8 text-center text-slate-500 font-mono">
                   No incident logs found matching criteria.
                 </td>
               </tr>
@@ -262,20 +263,20 @@ export const LogsTable = ({
 
       {/* Pagination */}
       {!isIncidentView && pagination.pages > 1 && (
-        <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs font-mono text-gray-600">
-          <div>Page <span className="font-semibold text-gray-900">{page}</span> of {pagination.pages}</div>
+        <div className="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between text-xs font-mono text-slate-400">
+          <div>Page <span className="font-semibold text-slate-200">{page}</span> of {pagination.pages}</div>
           <div className="flex gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(p - 1, 1))}
-              className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 hover:bg-slate-700 disabled:opacity-50"
             >
               Prev
             </button>
             <button
               disabled={page >= pagination.pages}
               onClick={() => setPage(p => Math.min(p + 1, pagination.pages))}
-              className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 hover:bg-slate-700 disabled:opacity-50"
             >
               Next
             </button>

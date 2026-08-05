@@ -3,12 +3,12 @@ import React from 'react';
 export const MlPredictions = ({ mlData }) => {
   if (!mlData) {
     return (
-      <div className="bg-[#111827] backdrop-blur-md bg-opacity-80 p-6 rounded-2xl mb-6 border border-gray-800 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-        <h2 className="text-xl font-bold text-gray-200 mb-4 flex items-center tracking-tight">
-          <span className="w-2.5 h-2.5 bg-gray-600 rounded-full mr-3 animate-pulse"></span>
+      <div className="bg-slate-900 backdrop-blur-md p-5 sm:p-6 rounded-xl mb-6 border border-slate-800 shadow-md">
+        <h2 className="text-base sm:text-lg font-bold text-slate-200 mb-3 flex items-center tracking-tight">
+          <span className="w-2.5 h-2.5 bg-slate-600 rounded-full mr-3 animate-pulse"></span>
           Cortex AI: Machine Learning Early Warning System
         </h2>
-        <div className="text-gray-400 font-medium">Waiting for live inference payload...</div>
+        <div className="text-slate-400 font-mono text-xs sm:text-sm">Waiting for live inference payload...</div>
       </div>
     );
   }
@@ -19,7 +19,7 @@ export const MlPredictions = ({ mlData }) => {
   const hasIncident = predicted_incident && predicted_incident !== 'NONE';
 
   return (
-    <div className={`p-6 rounded-2xl mb-6 border shadow-2xl transition-all duration-500 ${isAnomalous ? 'bg-gradient-to-br from-[#2a1114] to-[#1a0a0c] border-red-900/50 shadow-red-900/20' : 'bg-gradient-to-br from-[#111827] to-[#0f1422] border-gray-800'}`}>
+    <div className={`p-5 sm:p-6 rounded-xl mb-6 border shadow-md transition-all duration-500 ${isAnomalous ? 'bg-gradient-to-br from-rose-950/60 via-slate-900 to-slate-900 border-rose-900/60 shadow-rose-950/40' : 'bg-slate-900 border-slate-800'}`}>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-5">
         <h2 className="text-xl font-bold text-gray-100 flex items-center tracking-tight">
           <span className={`w-2.5 h-2.5 rounded-full mr-3 shadow-[0_0_8px] ${isAnomalous ? 'bg-red-500 shadow-red-500 animate-pulse' : 'bg-green-500 shadow-green-500'}`}></span>
