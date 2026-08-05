@@ -1,31 +1,42 @@
 import { pool } from '../config/db.js';
+import { scenarioState } from '../scenario/scenario.state.js';
+import { getIO } from '../config/socket.js';
 
 let intervalId;
 
 export const startLogCleanupWorker = () => {
-  // Run the cleanup every 30 seconds
+  // Check total log count every 30 seconds
   intervalId = setInterval(async () => {
     try {
-      // Check the total number of logs
+      // Check total log count in the database
       const countRes = await pool.query('SELECT COUNT(*) FROM logs;');
       const count = parseInt(countRes.rows[0].count, 10);
 
-      if (count > 1000) {
-        // Delete all logs except the 1000 most recent ones
+      // When total logs reach or exceed 2000, wipe all transient runtime data
+      if (count >= 1000) {
+        // Truncate all runtime/transient data tables in one atomic transaction
+        // runbooks table is NOT touched - it stores static RAG vector embeddings
         await pool.query(`
-          DELETE FROM logs
-          WHERE id IN (
-            SELECT id FROM logs
-            ORDER BY created_at DESC
-            OFFSET 1000
-          );
+          TRUNCATE TABLE logs, system_metrics, service_metrics, incidents RESTART IDENTITY;
         `);
-        console.log(`[Worker] [Log Cleanup] Cleaned up old logs. Current count maintained at 1000.`);
+
+        // Reset scenario engine: restart request counter and transition workflow from 0
+        scenarioState.requestCounter = 1;
+        scenarioState.forceTransition();
+
+        // Notify connected WebSocket clients to refresh their UI dashboards
+        try {
+          getIO().emit('incident_update');
+        } catch (sockErr) {
+          // Socket might not be initialized yet on first boot - safe to ignore
+        }
+
+        console.log(`[Worker] [DB Cleanup] 🧹 Log threshold hit (${count} >= 1000). Wiped logs, system_metrics, service_metrics, incidents. Workflow restarted from 0.`);
       }
     } catch (error) {
-      console.error('[Worker] [Log Cleanup] Failed to cleanup logs:', error.message);
+      console.error('[Worker] [DB Cleanup] Error during cleanup check:', error.message);
     }
-  }, 30000); // 30 seconds
+  }, 30000); // 30s check interval (production-friendly, low DB load)
 };
 
 export const stopLogCleanupWorker = () => {
