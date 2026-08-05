@@ -16,6 +16,7 @@ import {
 import { MetricsCharts } from './MetricsCharts';
 import { LogsTable } from './LogsTable';
 import { CortexCopilot } from './CortexCopilot';
+import { API_BASE_URL } from '../config/api.config';
 
 export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [], onTraceSelect }) => {
   const [rcaData, setRcaData] = useState(null);
@@ -28,7 +29,7 @@ export const IncidentRcaModal = ({ incidentId, onClose, logs = [], metrics = [],
     let isMounted = true;
     setLoading(true);
 
-    fetch(`http://localhost:5000/api/incidents/${incidentId}/rca`)
+    fetch(`${API_BASE_URL}/api/incidents/${incidentId}/rca`)
       .then((res) => res.json())
       .then((json) => {
         if (isMounted && json.status === 'SUCCESS') {

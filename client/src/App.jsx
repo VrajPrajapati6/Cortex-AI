@@ -11,8 +11,9 @@ import TopologyGraph from "./components/TopologyGraph";
 import { TraceExplorerModal } from "./components/TraceExplorerModal";
 import { MlPredictions } from "./components/MlPredictions";
 import { LandingPage } from "./components/landing/LandingPage";
+import { API_BASE_URL } from "./config/api.config";
 
-const socket = io("http://localhost:5000");
+const socket = io(API_BASE_URL);
 
 export default function App() {
   const [currentView, setCurrentView] = useState("landing"); // "landing" | "dashboard"
@@ -39,7 +40,7 @@ export default function App() {
     setIsRefreshing(true);
     try {
       // Always fetch incidents list
-      const incRes = await fetch("http://localhost:5000/api/incidents");
+      const incRes = await fetch(`${API_BASE_URL}/api/incidents`);
       if (incRes.ok) {
         const incData = await incRes.json();
         setIncidents(incData.data.incidents || []);
@@ -48,7 +49,7 @@ export default function App() {
       if (selectedIncidentId) {
         // Fetch incident-specific logs
         const incLogsRes = await fetch(
-          `http://localhost:5000/api/incidents/${selectedIncidentId}/logs`,
+          `${API_BASE_URL}/api/incidents/${selectedIncidentId}/logs`,
         );
         if (incLogsRes.ok) {
           const logsData = await incLogsRes.json();
@@ -57,7 +58,7 @@ export default function App() {
 
         // Fetch incident-specific metrics
         const incMetricsRes = await fetch(
-          `http://localhost:5000/api/incidents/${selectedIncidentId}/metrics`,
+          `${API_BASE_URL}/api/incidents/${selectedIncidentId}/metrics`,
         );
         if (incMetricsRes.ok) {
           const metricsData = await incMetricsRes.json();
@@ -65,7 +66,7 @@ export default function App() {
         }
       } else {
         // Fetch global summary
-        const summaryRes = await fetch("http://localhost:5000/api/summary");
+        const summaryRes = await fetch(`${API_BASE_URL}/api/summary`);
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
           setSummary(summaryData.data);
@@ -73,7 +74,7 @@ export default function App() {
 
         // Fetch global metrics
         const metricsRes = await fetch(
-          "http://localhost:5000/api/metrics?limit=30",
+          `${API_BASE_URL}/api/metrics?limit=30`,
         );
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
@@ -96,7 +97,7 @@ export default function App() {
         if (searchTerm.trim()) queryParams.append("search", searchTerm.trim());
 
         const logsRes = await fetch(
-          `http://localhost:5000/api/logs?${queryParams.toString()}`,
+          `${API_BASE_URL}/api/logs?${queryParams.toString()}`,
         );
         if (logsRes.ok) {
           const logsData = await logsRes.json();

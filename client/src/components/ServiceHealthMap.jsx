@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api.config';
 
 const ServiceHealthMap = () => {
   const [services, setServices] = useState([]);
@@ -7,7 +8,7 @@ const ServiceHealthMap = () => {
 
   const fetchHealth = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/health/services');
+      const response = await fetch(`${API_BASE_URL}/api/health/services`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setServices(data);

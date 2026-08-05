@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, Server, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../config/api.config';
 
 export const TraceExplorerModal = ({ requestId, onClose }) => {
   const [traceData, setTraceData] = useState(null);
@@ -8,7 +9,7 @@ export const TraceExplorerModal = ({ requestId, onClose }) => {
   useEffect(() => {
     if (!requestId) return;
     setLoading(true);
-    fetch(`http://localhost:5000/api/traces/${requestId}`)
+    fetch(`${API_BASE_URL}/api/traces/${requestId}`)
       .then(res => res.json())
       .then(data => {
         setTraceData(data);

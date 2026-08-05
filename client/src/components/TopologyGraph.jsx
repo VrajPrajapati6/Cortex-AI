@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api.config';
 
 const fixedPositions = {
   'User Service': { x: 80, y: 175 },
@@ -26,7 +27,7 @@ export const TopologyGraph = () => {
 
   const fetchTopology = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/health/topology');
+      const res = await fetch(`${API_BASE_URL}/api/health/topology`);
       if (res.ok) {
         const data = await res.json();
         setNodes(data.nodes || []);
