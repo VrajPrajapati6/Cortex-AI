@@ -7,7 +7,8 @@ export const Header = ({
   setAutoRefresh,
   countdown,
   onManualRefresh,
-  isRefreshing
+  isRefreshing,
+  onOpenLanding
 }) => {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-50">
@@ -28,7 +29,16 @@ export const Header = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          {onOpenLanding && (
+            <button
+              onClick={onOpenLanding}
+              className="px-3.5 py-1.5 text-xs font-bold rounded-lg text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors flex items-center gap-1.5"
+            >
+              <span>← Landing Page & Guide</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm text-green-700">
             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
             <span className="font-semibold text-xs tracking-wide uppercase">Live Connection</span>

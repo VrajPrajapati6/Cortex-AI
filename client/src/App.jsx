@@ -10,10 +10,12 @@ import ServiceHealthMap from "./components/ServiceHealthMap";
 import TopologyGraph from "./components/TopologyGraph";
 import { TraceExplorerModal } from "./components/TraceExplorerModal";
 import { MlPredictions } from "./components/MlPredictions";
+import { LandingPage } from "./components/landing/LandingPage";
 
 const socket = io("http://localhost:5000");
 
 export default function App() {
+  const [currentView, setCurrentView] = useState("landing"); // "landing" | "dashboard"
   const [summary, setSummary] = useState(null);
   const [metrics, setMetrics] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -205,6 +207,10 @@ export default function App() {
     fetchDashboardData,
   ]);
 
+  if (currentView === "landing") {
+    return <LandingPage onLaunchApp={() => setCurrentView("dashboard")} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
       <Header
@@ -217,6 +223,7 @@ export default function App() {
         lastUpdated={summary?.lastUpdated}
         isRefreshing={isRefreshing}
         onManualRefresh={fetchDashboardData}
+        onOpenLanding={() => setCurrentView("landing")}
       />
 
       <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 py-6 flex gap-6">
