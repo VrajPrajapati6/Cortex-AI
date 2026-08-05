@@ -9,3 +9,10 @@ yarn-error.log*
 Thumbs.db
 src/data/temp/*
 !src/data/temp/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
