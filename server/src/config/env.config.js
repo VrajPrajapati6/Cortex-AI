@@ -8,5 +8,6 @@ export const config = Object.freeze({
   port: process.env.PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   dbUrl: process.env.DATABASE_URL,
-  geminiApiKey: process.env.GEMINI_API_KEY
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  jwtSecret: process.env.JWT_SECRET || 'cortex_jwt_secret_key_2026'
 });

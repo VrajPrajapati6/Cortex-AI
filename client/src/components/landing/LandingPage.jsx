@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { HeroAiBackgroundCanvas } from "./HeroAiBackgroundCanvas";
+import { useAuth } from "../../context/AuthContext";
+import { AuthModal } from "../auth/AuthModal";
 import {
   Cpu,
   Database,
@@ -34,12 +36,23 @@ import {
 export const LandingPage = ({ onLaunchApp }) => {
   const [activeTab, setActiveTab] = useState("ml");
   const [theme, setTheme] = useState("dark"); // "dark" | "light"
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  const { isAuthenticated } = useAuth();
   const isDark = theme === "dark";
 
   // Toggle theme handler
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  // Handle Enter Platform / Launch Dashboard Action
+  const handleLaunchClick = () => {
+    if (isAuthenticated) {
+      onLaunchApp();
+    } else {
+      setIsAuthModalOpen(true);
+    }
   };
 
   return (
@@ -95,7 +108,7 @@ export const LandingPage = ({ onLaunchApp }) => {
             </button>
 
             <button
-              onClick={onLaunchApp}
+              onClick={handleLaunchClick}
               className={`px-4 py-2 rounded-lg font-heading font-extrabold text-xs tracking-wide uppercase transition-all border flex items-center gap-2 shadow-lg ${
                 isDark
                   ? "bg-white text-black border-white hover:bg-zinc-200"
@@ -108,6 +121,14 @@ export const LandingPage = ({ onLaunchApp }) => {
           </div>
         </div>
       </header>
+
+      {/* Auth Modal Component */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={onLaunchApp}
+        isDark={isDark}
+      />
 
       {/* ========================================================================= */}
       {/* HERO SECTION (TAKES 100% OF INITIAL WINDOW FOLD — h-[calc(100vh-3.5rem)])  */}
@@ -149,7 +170,7 @@ export const LandingPage = ({ onLaunchApp }) => {
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-4">
               <button
-                onClick={onLaunchApp}
+                onClick={handleLaunchClick}
                 className={`px-8 py-4 rounded-lg font-heading font-extrabold text-xs tracking-wider uppercase transition-all flex items-center gap-3 ${
                   isDark
                     ? "bg-white text-black hover:bg-zinc-200 shadow-2xl"
@@ -1016,7 +1037,7 @@ export const LandingPage = ({ onLaunchApp }) => {
             </p>
 
             <button
-              onClick={onLaunchApp}
+              onClick={handleLaunchClick}
               className="px-8 py-3.5 rounded-lg font-heading font-extrabold text-xs tracking-wider uppercase transition-all shadow-2xl inline-flex items-center gap-3 bg-white text-black hover:bg-zinc-200"
             >
               <span>ENTER LIVE DASHBOARD</span>

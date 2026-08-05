@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
+import { User, LogOut } from 'lucide-react';
 
 export const Header = ({
   systemStatus = 'OPERATIONAL',
@@ -10,6 +12,8 @@ export const Header = ({
   isRefreshing,
   onOpenLanding
 }) => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -18,10 +22,11 @@ export const Header = ({
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-gray-900 tracking-tight">Cortex</h1>
-              <span className={`px-2.5 py-0.5 text-xs font-bold uppercase rounded ${systemStatus === 'CRITICAL' ? 'bg-red-100 text-red-700' :
-                  systemStatus === 'DEGRADED' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-700'
-                }`}>
+              <span className={`px-2.5 py-0.5 text-xs font-bold uppercase rounded ${
+                systemStatus === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                systemStatus === 'DEGRADED' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-700'
+              }`}>
                 {systemStatus}
               </span>
             </div>
@@ -37,6 +42,22 @@ export const Header = ({
             >
               <span>← Landing Page & Guide</span>
             </button>
+          )}
+
+          {isAuthenticated && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
+                <User className="w-3.5 h-3.5 text-slate-500" />
+                <span>{user?.username || user?.email}</span>
+              </div>
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-md bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           )}
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm text-green-700">
