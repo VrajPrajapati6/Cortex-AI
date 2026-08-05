@@ -31,7 +31,8 @@ export const startMlInferenceWorker = () => {
       const features = extractTelemetryWindowFeatures(telemetryWindow, null, null);
       
       // 3. Send to Python Inference API
-      const response = await fetch('http://127.0.0.1:5005/predict', {
+      const pythonMlUrl = process.env.PYTHON_ML_URL || 'http://127.0.0.1:5005';
+      const response = await fetch(`${pythonMlUrl}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(features)
