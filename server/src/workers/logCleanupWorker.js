@@ -4,7 +4,7 @@ import { getIO } from "../config/socket.js";
 let intervalId;
 
 export const startLogCleanupWorker = () => {
-  // Check total log count every 15 seconds
+  // Check total log count every 180 seconds
   intervalId = setInterval(async () => {
     try {
       // Check total log count in the database
@@ -54,7 +54,7 @@ export const startLogCleanupWorker = () => {
         error.message
       );
     }
-  }, 15000); // 15s check interval
+  }, 180000); // 180s check interval
 };
 
 export const stopLogCleanupWorker = () => {
