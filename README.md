@@ -555,5 +555,5 @@ npm run dev
 
 ---
 
-End of Documentation  
-Cortex represents a massive undertaking in understanding distributed systems, telemetry generation, algorithmic graph traversal, and real-time frontend data visualization. Enjoy exploring the code!
+End of Documentation..
+Cortex represents a massive undertaking in understanding distributed systems, telemetry generation, algorithmic graph traversal, and real-time frontend data visualization. Enjoy exploring the code..!
