@@ -27,6 +27,10 @@ export default function App() {
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [selectedTraceId, setSelectedTraceId] = useState(null);
   const [mlData, setMlData] = useState(null);
+  const [mlStatus, setMlStatus] = useState({
+    status: 'waking_up',
+    message: 'Due to Render free tier, the ML model may take 40-50 seconds to wake up from sleep. Please wait while the model initializes...'
+  });
   const [showMobileIncidents, setShowMobileIncidents] = useState(false);
 
   // Filters & Pagination State
@@ -198,8 +202,13 @@ export default function App() {
     socket.on("incident_update", handleIncidentUpdate);
     socket.on("logs_pruned", fetchDashboardData);
 
+    socket.on("ml_status", (status) => {
+      if (status) setMlStatus(status);
+    });
+
     socket.on("ml_prediction", (data) => {
       setMlData(data);
+      setMlStatus({ status: "online", message: "ML Inference Engine active" });
     });
 
     return () => {
@@ -207,6 +216,7 @@ export default function App() {
       socket.off("new_metrics", handleNewMetrics);
       socket.off("incident_update", handleIncidentUpdate);
       socket.off("logs_pruned", fetchDashboardData);
+      socket.off("ml_status");
       socket.off("ml_prediction");
     };
   }, [
@@ -289,7 +299,7 @@ export default function App() {
           ) : (
             /* Normal Live Monitoring View */
             <>
-              <MlPredictions mlData={mlData} />
+              <MlPredictions mlData={mlData} mlStatus={mlStatus} />
               <SummaryCards summary={summary} />
 
               <ServiceHealthMap />
