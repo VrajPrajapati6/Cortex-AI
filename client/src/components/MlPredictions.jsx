@@ -1,14 +1,12 @@
 import React from 'react';
 
 export const MlPredictions = ({ mlData, mlStatus }) => {
-  const isWakingUp = !mlData || mlStatus?.status === 'waking_up';
+  const isWakingUp = mlStatus?.status === 'waking_up';
 
-  if (isWakingUp) {
+  // If initial telemetry is still spinning up on first 1s boot
+  if (!mlData) {
     return (
       <div className="bg-slate-900/90 backdrop-blur-md p-5 sm:p-6 rounded-xl mb-6 border border-amber-500/40 shadow-lg shadow-amber-950/20 relative overflow-hidden transition-all duration-500">
-        {/* Ambient Top Glow */}
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-96 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center tracking-tight">
             <span className="relative flex h-3 w-3 mr-3">
@@ -34,7 +32,7 @@ export const MlPredictions = ({ mlData, mlStatus }) => {
             </div>
             <div className="space-y-1">
               <p className="text-amber-200/90 text-xs sm:text-sm font-medium leading-relaxed">
-                {mlStatus?.message || "Due to Render free tier, the ML model may take 40–50 seconds to wake up from sleep. Please wait while the model initializes automatically..."}
+                Due to Render free tier, the ML model may take 40-50 seconds to wake up from sleep. Please wait while the model initializes automatically...
               </p>
               <p className="text-slate-400 font-mono text-xs flex items-center gap-1.5 mt-1">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
@@ -44,7 +42,6 @@ export const MlPredictions = ({ mlData, mlStatus }) => {
           </div>
         </div>
 
-        {/* Animated Loading Bar */}
         <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800/80">
           <div className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 h-full w-full animate-pulse rounded-full" />
         </div>
@@ -52,13 +49,43 @@ export const MlPredictions = ({ mlData, mlStatus }) => {
     );
   }
 
-  const { is_anomaly, predicted_incident, primary_service, features } = mlData;
+  const { is_anomaly, predicted_incident, primary_service, features, source } = mlData;
 
   const isAnomalous = is_anomaly === 1;
   const hasIncident = predicted_incident && predicted_incident !== 'NONE';
 
   return (
-    <div className={`p-5 sm:p-6 rounded-xl mb-6 border shadow-md transition-all duration-500 ${isAnomalous ? 'bg-gradient-to-br from-rose-950/60 via-slate-900 to-slate-900 border-rose-900/60 shadow-rose-950/40' : 'bg-slate-900 border-slate-800'}`}>
+    <div className={`p-5 sm:p-6 rounded-xl mb-6 border shadow-md transition-all duration-500 relative overflow-hidden ${isAnomalous ? 'bg-gradient-to-br from-rose-950/60 via-slate-900 to-slate-900 border-rose-900/60 shadow-rose-950/40' : 'bg-slate-900 border-slate-800'}`}>
+      
+      {/* Cold Start Notice Banner when waking up */}
+      {isWakingUp && (
+        <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg px-4 py-2.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+            <span className="text-xs sm:text-sm font-medium text-amber-200">
+              ⚡ Due to Render free tier, the Python ML model may take 40–50 seconds to wake up from sleep. The system is auto-waking it in the background...
+            </span>
+          </div>
+          <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 self-start sm:self-auto">
+            AUTO WAKING UP
+          </span>
+        </div>
+      )}
+
+      {/* Online Status Pill when active */}
+      {!isWakingUp && (
+        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-lg px-3.5 py-1.5 mb-4 flex items-center justify-between text-xs font-mono text-emerald-300">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span>
+            <span>ML ENGINE ONLINE: {source === 'fastapi_xgboost' ? 'FastAPI + XGBoost Classifier' : 'Cortex Telemetry AI Engine'}</span>
+          </div>
+          <span className="text-slate-400 font-sans text-[11px]">Real-Time Active Pipeline</span>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-5">
         <h2 className="text-xl font-bold text-gray-100 flex items-center tracking-tight">
           <span className={`w-2.5 h-2.5 rounded-full mr-3 shadow-[0_0_8px] ${isAnomalous ? 'bg-red-500 shadow-red-500 animate-pulse' : 'bg-green-500 shadow-green-500'}`}></span>
